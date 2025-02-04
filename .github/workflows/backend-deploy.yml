@@ -21,6 +21,6 @@ jobs:
       - name: Activate VENV
         run: source backend/flaskenv/bin/activate
       - name: Install Packages
-        run: $(pwd)/backend/flaskenv/bin/pip3 install -r requirements.txt
+        run: $(pwd)/backend/flaskenv/bin/pip3 install -r backend/requirements.txt
       - name: Test Action
         run: echo "TEST Success"
