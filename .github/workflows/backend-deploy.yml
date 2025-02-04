@@ -22,5 +22,9 @@ jobs:
         run: source backend/flaskenv/bin/activate
       - name: Install Packages
         run: $(pwd)/backend/flaskenv/bin/pip3 install -r backend/requirements.txt
+      - name: Chmod Script
+        run: sudo chmod +x backend/add-ini-wsgi-conf.sh
+      - name: Run Script
+        run: sudo ./backend/add-ini-wsgi-conf.sh flask.ini flask.sock
       - name: Test Action
         run: echo "TEST Success"
