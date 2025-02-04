@@ -16,15 +16,15 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: ls
-        run: ls
-      - name: echo
+      - name: Open Backend Folder
+        run: cd backend
+      - name: echo Folder
         run: echo $(pwd)
-      # - name: Create VENV
-      #   run: python3 -m virtualenv flaskenv
-      # - name: Activate VENV
-      #   run: source flaskenv/bin/activate
-      # - name: Install Packages
-      #   run: $(pwd)/flaskenv/bin/pip3 install -r requirements.txt
+      - name: Create VENV
+        run: python3 -m virtualenv flaskenv
+      - name: Activate VENV
+        run: source flaskenv/bin/activate
+      - name: Install Packages
+        run: $(pwd)/flaskenv/bin/pip3 install -r requirements.txt
       - name: Test Action
         run: echo "TEST Success"
