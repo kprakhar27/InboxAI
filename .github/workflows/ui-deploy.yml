@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - feature/initial-frontend # Change to main
+      - main
 
 jobs:
   deploy:
