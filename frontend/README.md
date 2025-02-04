@@ -49,4 +49,4 @@ TypeScript - Type-safe JavaScript
 
 Vite - Fast bundler and dev server
 
-ESLint & Prettier - Linting and formatting
+ESLint - Linting
