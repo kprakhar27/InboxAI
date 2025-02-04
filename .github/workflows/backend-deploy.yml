@@ -26,5 +26,9 @@ jobs:
         run: sudo chmod +x backend/add-ini-wsgi-conf.sh
       - name: Run Script
         run: sudo ./backend/add-ini-wsgi-conf.sh flask.ini flask.sock
+      - name: Chmod Script
+        run: sudo chmod +x backend/add-service.sh
+      - name: Run Script
+        run: sudo ./backend/add-service.sh flask.example $USER flaskenv flask.ini
       - name: Test Action
         run: echo "TEST Success"
