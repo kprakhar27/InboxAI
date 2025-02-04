@@ -1,5 +1,5 @@
 #!/bin/bash
-home_path=$(pwd)
+home_path=$(pwd)/backend
 wsgi_path="$home_path/wsgi.py"
 ini_path="$home_path/$1"
 
