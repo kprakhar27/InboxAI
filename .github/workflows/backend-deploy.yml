@@ -1,0 +1,21 @@
+on:
+  push:
+    branches: ['main']
+    paths: ['backend/**']
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Create VENV
+        run: python3 -m virtualenv flaskenv
+      - name: Activate VENV
+        run: source flaskenv/bin/activate
+      - name: Install Packages
+        run: $(pwd)/flaskenv/bin/pip3 install -r requirements.txt
+      - name: Test Action
+        run: echo "TEST Success"
