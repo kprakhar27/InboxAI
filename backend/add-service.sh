@@ -27,5 +27,6 @@ ExecStart=$home_path/backend/$3/bin/uwsgi --ini $home_path/backend/$4
 [Install]
 WantedBy=multi-user.target"
 echo "$service_contents" >> "$service_path"
+systemctl daemon-reload
 systemctl start $1.service
 systemctl enable $1.service
