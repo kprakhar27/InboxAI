@@ -25,7 +25,9 @@ vacuum = true"
 
 echo "$ini_text" > "$ini_path"
 
-wsgi_text="from app import app
+wsgi_text="from app import create_app
+
+app = create_app()
 
 if __name__ == \"__main__\":
     app.run()"
