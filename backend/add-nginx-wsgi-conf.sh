@@ -44,8 +44,8 @@ conf_text="server {
 
 }
 server {
-    if ($host = backend.inboxai.tech) {
-        return 301 https://$host$request_uri;
+    if (\$host = backend.inboxai.tech) {
+        return 301 https://\$host\$request_uri;
     } # managed by Certbot
 
 
