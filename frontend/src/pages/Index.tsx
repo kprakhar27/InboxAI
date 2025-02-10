@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/Navbar";
 import { FeatureCard } from "@/components/FeatureCard";
 import { Footer } from "@/components/Footer";
+import { useNavigate } from "react-router-dom";
 
 const features = [
   {
@@ -32,6 +33,10 @@ const features = [
 ];
 
 const Index = () => {
+  const navigate = useNavigate();
+  const handleGetStarted = () => {
+    navigate("/login", { state: { register: true } });
+  };
   return (
     <div className="min-h-screen">
       <Navbar />
@@ -50,7 +55,11 @@ const Index = () => {
             automation, and effortless organization.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-up">
-            <Button size="lg" className="bg-primary hover:bg-primary/90">
+            <Button
+              size="lg"
+              className="bg-primary hover:bg-primary/90"
+              onClick={handleGetStarted}
+            >
               Get Started
             </Button>
             <Button size="lg" variant="outline">
