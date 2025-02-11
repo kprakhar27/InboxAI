@@ -171,6 +171,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+.data
+.DS_Store
 
 # Logs
 logs
