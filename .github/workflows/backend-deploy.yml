@@ -30,13 +30,13 @@ jobs:
       - name: Create .env file
         run: |
           touch backend/.env
-          echo ${{ secrets.DB_USER }} >> backend/.env
-          echo ${{ secrets.DB_PASWWORD }} >> backend/.env
-          echo ${{ secrets.HOST }} >> backend/.env
-          echo ${{ secrets.DB_PORT }} >> backend/.env
-          echo ${{ secrets.DB_NAME }} >> backend/.env
-          echo ${{ secrets.SECRET_KEY }} >> backend/.env
-          echo ${{ secrets.JWT_SECRET_KEY }} >> backend/.env
+          echo DB_USER=${{ secrets.DB_USER }} >> backend/.env
+          echo DB_PASWWORD=${{ secrets.DB_PASWWORD }} >> backend/.env
+          echo DB_HOST=${{ secrets.HOST }} >> backend/.env
+          echo DB_PORT=${{ secrets.DB_PORT }} >> backend/.env
+          echo DB_NAME=${{ secrets.DB_NAME }} >> backend/.env
+          echo SECRET_KEY=${{ secrets.SECRET_KEY }} >> backend/.env
+          echo JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }} >> backend/.env
           cat backend/.env
       - name: Chmod wsgi Script
         run: sudo chmod +x backend/add-ini-wsgi-conf.sh
