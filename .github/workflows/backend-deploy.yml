@@ -27,6 +27,17 @@ jobs:
           touch backend/credentials.json
           echo ${{ secrets.GOOGLE_CREDENTIALS }} >> backend/credentials.json
           cat backend/credentials.json
+      - name: Create .env file
+        run: |
+          touch backend/.env
+          echo ${{ secrets.DB_USER }} >> backend/.env
+          echo ${{ secrets.DB_PASWWORD }} >> backend/.env
+          echo ${{ secrets.HOST }} >> backend/.env
+          echo ${{ secrets.DB_PORT }} >> backend/.env
+          echo ${{ secrets.DB_NAME }} >> backend/.env
+          echo ${{ secrets.SECRET_KEY }} >> backend/.env
+          echo ${{ secrets.JWT_SECRET_KEY }} >> backend/.env
+          cat backend/.env
       - name: Chmod wsgi Script
         run: sudo chmod +x backend/add-ini-wsgi-conf.sh
       - name: Run wsgi Script

@@ -1,8 +1,19 @@
 import os
+from os.path import join, dirname
+from dotenv import load_dotenv
+
+dotenv_path = join(dirname(__file__), '.env')
+load_dotenv(dotenv_path)
+
+DB_USER=os.environ.get("DB_USER")
+DB_PASWWORD=os.environ.get("DB_PASWWORD")
+DB_HOST=os.environ.get("DB_HOST")
+DB_PORT=os.environ.get("DB_PORT")
+DB_NAME=os.environ.get("DB_NAME")
 
 # create basick congiguration of backend app
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY', '046d9210-d695-43a9-ad1e-3bd813ae4e5e')
-    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'ae7f52c0-3a2d-4961-9725-d9b34b5c9e72')
-    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:inboxai-project@144.24.127.222:5432/inboxai_db'
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
+    SQLALCHEMY_DATABASE_URI = f'postgresql://{DB_USER}:{DB_PASWWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
