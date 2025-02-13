@@ -15,7 +15,6 @@ def create_app():
 
     db.init_app(app)
     jwt.init_app(app)
-    scheduler.start()
 
     with app.app_context():
         db.create_all()
