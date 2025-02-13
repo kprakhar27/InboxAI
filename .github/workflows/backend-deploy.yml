@@ -37,6 +37,7 @@ jobs:
           echo DB_NAME=${{ secrets.DB_NAME }} >> backend/.env
           echo SECRET_KEY=${{ secrets.SECRET_KEY }} >> backend/.env
           echo JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }} >> backend/.env
+          echo REDIRECT_URI=${{ secrets.REDIRECT_URI }} >> backend/.env
           cat backend/.env
       - name: Chmod wsgi Script
         run: sudo chmod +x backend/add-ini-wsgi-conf.sh
