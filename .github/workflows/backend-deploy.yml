@@ -22,11 +22,13 @@ jobs:
         run: source backend/flaskenv/bin/activate
       - name: Install Packages
         run: $(pwd)/backend/flaskenv/bin/pip3 install -r backend/requirements.txt
-      - name: Create credentials.json file
-        run: |
-          touch backend/credentials.json
-          echo ${{ secrets.GOOGLE_CREDENTIALS }} >> backend/credentials.json
-          cat backend/credentials.json
+      - name: Create dynamic credentials.json file
+        id: create-json
+        uses: jsdaniell/create-json@v1.2.3
+        with:
+          name: "credentials.json"
+          json: ${{ secrets.GOOGLE_CREDENTIALS }}
+          dir: 'backend/'
       - name: Create .env file
         run: |
           touch backend/.env
