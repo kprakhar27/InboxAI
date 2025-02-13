@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import text
 
 from .models import Users, GoogleToken
-from . import db, scheduler
+from . import db
 
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
