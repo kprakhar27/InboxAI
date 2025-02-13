@@ -17,9 +17,7 @@ from dotenv import load_dotenv
 dotenv_path = join(dirname(__file__), '.env')
 load_dotenv(dotenv_path)
 
-
 routes_bp = Blueprint("routes", __name__)
-
 
 if os.environ.get('REDIRECT_URI').startswith("http://"):
     os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
