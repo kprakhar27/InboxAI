@@ -1,7 +1,12 @@
+import json
 import logging
 from datetime import datetime
+from email import policy
+from email.parser import BytesParser
 
 from auth.gmail_auth import GmailAuthenticator
+from preprocessing.cleaner import clean_text, html_to_text
+from preprocessing.parser import extract_email_metadata, process_email_content
 from services.gmail_service import GmailService
 from services.storage_service import StorageService
 
@@ -45,3 +50,47 @@ class EmailPipeline:
                 successful_saves += 1
 
         return len(threads), successful_saves
+
+    def _clean_and_process_email(self, raw_msg, message_id):
+        """Process and clean a single email message."""
+        msg = BytesParser(policy=policy.default).parsebytes(raw_msg)
+
+        # Extract metadata and content
+        metadata = extract_email_metadata(msg)
+        content, attachments = process_email_content(msg)
+
+        # Prepare processed data
+        return {
+            "metadata": metadata,
+            "content": content,
+            "attachments": attachments,
+            "processing_info": {
+                "message_id": message_id,
+                "processed_timestamp": datetime.now().isoformat(),
+                "content_length": len(content),
+            },
+        }
+
+    def _clean_thread(self, thread_data, thread_id):
+        """Process and clean an entire email thread."""
+        cleaned_messages = []
+
+        for message in thread_data.get("messages", []):
+            try:
+                cleaned_message = self._clean_and_process_email(
+                    message["raw"], message["id"]
+                )
+                cleaned_messages.append(cleaned_message)
+            except Exception as e:
+                logging.error(
+                    f"Error cleaning message {message['id']} in thread {thread_id}: {e}"
+                )
+
+        return {
+            "thread_id": thread_id,
+            "messages": cleaned_messages,
+            "processing_info": {
+                "processed_timestamp": datetime.now().isoformat(),
+                "message_count": len(cleaned_messages),
+            },
+        }
