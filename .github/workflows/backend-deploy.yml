@@ -22,6 +22,25 @@ jobs:
         run: source backend/flaskenv/bin/activate
       - name: Install Packages
         run: $(pwd)/backend/flaskenv/bin/pip3 install -r backend/requirements.txt
+      - name: Create dynamic credentials.json file
+        id: create-json
+        uses: jsdaniell/create-json@v1.2.3
+        with:
+          name: "credentials.json"
+          json: ${{ secrets.GOOGLE_CREDENTIALS }}
+          dir: 'backend/'
+      - name: Create .env file
+        run: |
+          touch backend/.env
+          echo DB_USER=${{ secrets.DB_USER }} >> backend/.env
+          echo DB_PASWWORD=${{ secrets.DB_PASWWORD }} >> backend/.env
+          echo DB_HOST=${{ secrets.HOST }} >> backend/.env
+          echo DB_PORT=${{ secrets.DB_PORT }} >> backend/.env
+          echo DB_NAME=${{ secrets.DB_NAME }} >> backend/.env
+          echo SECRET_KEY=${{ secrets.SECRET_KEY }} >> backend/.env
+          echo JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }} >> backend/.env
+          echo REDIRECT_URI=${{ secrets.REDIRECT_URI }} >> backend/.env
+          cat backend/.env
       - name: Chmod wsgi Script
         run: sudo chmod +x backend/add-ini-wsgi-conf.sh
       - name: Run wsgi Script
