@@ -13,10 +13,10 @@ class StorageService:
         self.client = storage.Client()
         self.bucket = self.client.bucket(BUCKET_NAME)
 
-    def save_email(self, email_address, msg_id, raw_msg):
+    def save_raw_email(self, email_address, msg_id, raw_msg):
         try:
             now = datetime.now().strftime("%Y%m%d%H%M")
-            blob_name = f"{EMAIL_FOLDER}/{email_address}/{now}/{msg_id}.eml"
+            blob_name = f"{EMAIL_FOLDER}/raw/{email_address}/{now}/{msg_id}.eml"
             raw_email = base64.urlsafe_b64decode(raw_msg["raw"].encode("ASCII"))
 
             blob = self.bucket.blob(blob_name)
@@ -27,10 +27,10 @@ class StorageService:
             logging.error(f"Error saving email {msg_id}: {e}")
             return None
 
-    def save_thread(self, email_address, thread_id, thread_data):
+    def save_raw_thread(self, email_address, thread_id, thread_data):
         try:
             now = datetime.now().strftime("%Y%m%d%H%M")
-            blob_name = f"{THREAD_FOLDER}/{email_address}/{now}/{thread_id}.json"
+            blob_name = f"{THREAD_FOLDER}/raw/{email_address}/{now}/{thread_id}.json"
 
             blob = self.bucket.blob(blob_name)
             blob.upload_from_string(json.dumps(thread_data))
