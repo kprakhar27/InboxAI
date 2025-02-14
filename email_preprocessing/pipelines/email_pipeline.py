@@ -63,7 +63,7 @@ class EmailPipeline:
             for thread in threads:
                 try:
                     thread_data = self.gmail_service.get_thread(thread["id"])
-                    if thread_data and self.storage_service.save_raw_thread(
+                    if thread_data and self.storage_service.save_thread(
                         self.email_address, thread["id"], thread_data
                     ):
                         successful_saves += 1
