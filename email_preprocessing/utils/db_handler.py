@@ -3,11 +3,13 @@ import logging
 from threading import Lock
 
 import psycopg2
-from config.settings import DB_CONFIG, TOKEN_TABLE
 
 db_lock = Lock()
 
 
+# Class DeprecationWarning is a subclass of Warning.
+# It is used to indicate that a class is deprecated and will be removed in the future.
+@DeprecationWarning
 class DatabaseHandler:
     @staticmethod
     def get_connection():
