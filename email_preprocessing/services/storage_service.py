@@ -3,8 +3,9 @@ import json
 import logging
 from datetime import datetime
 
-from config.settings import BUCKET_NAME, EMAIL_FOLDER, THREAD_FOLDER
 from google.cloud import storage
+
+from email_preprocessing.config.settings import BUCKET_NAME, EMAIL_FOLDER, THREAD_FOLDER
 
 
 class StorageService:

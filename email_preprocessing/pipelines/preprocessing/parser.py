@@ -3,7 +3,7 @@ from email import policy
 from email.parser import BytesParser
 from email.utils import parseaddr, parsedate_to_datetime
 
-from preprocessing.cleaner import clean_text, html_to_text
+from email_preprocessing.pipelines.preprocessing.cleaner import clean_text, html_to_text
 
 
 def process_email_content(msg):
