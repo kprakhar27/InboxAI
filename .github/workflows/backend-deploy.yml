@@ -1,0 +1,38 @@
+name: Deploy to Oracle Server
+
+on:
+  push:
+    branches: ['main']
+    paths: ['backend/**']
+  pull_request:
+    branches: ['main']
+    paths: ['backend/**']
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Create VENV
+        run: python3 -m virtualenv backend/flaskenv
+      - name: Activate VENV
+        run: source backend/flaskenv/bin/activate
+      - name: Install Packages
+        run: $(pwd)/backend/flaskenv/bin/pip3 install -r backend/requirements.txt
+      - name: Chmod wsgi Script
+        run: sudo chmod +x backend/add-ini-wsgi-conf.sh
+      - name: Run wsgi Script
+        run: sudo ./backend/add-ini-wsgi-conf.sh flask.ini flask.sock
+      - name: Chmod Service Script
+        run: sudo chmod +x backend/add-service.sh
+      - name: Run Service Script
+        run: sudo ./backend/add-service.sh inboxai-backend $USER flaskenv flask.ini
+      - name: Chmod Nginx Script
+        run: sudo chmod +x backend/add-nginx-wsgi-conf.sh 
+      - name: Run Nginx Script
+        run: sudo ./backend/add-nginx-wsgi-conf.sh inboxai-backend flask.sock
+      - name: Success
+        run: echo "Deploy Success"

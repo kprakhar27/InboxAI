@@ -1,0 +1,12 @@
+wheel
+uwsgi
+Werkzeug==2.2.2
+Flask==2.2.5
+flask-sqlalchemy
+flask-login
+flask-jwt-extended
+flask-cors
+flask-migrate
+psycopg2-binary
+requests
+python-dotenv
