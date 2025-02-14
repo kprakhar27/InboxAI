@@ -2,11 +2,11 @@ name: Deploy to Oracle Server
 
 on:
   push:
-    branches: ['main']
-    paths: ['backend/**']
+    branches: ["main"]
+    paths: ["backend/**"]
   pull_request:
-    branches: ['main']
-    paths: ['backend/**']
+    branches: ["main"]
+    paths: ["backend/**"]
 
 jobs:
   deploy:
@@ -28,7 +28,7 @@ jobs:
         with:
           name: "credentials.json"
           json: ${{ secrets.GOOGLE_CREDENTIALS }}
-          dir: 'backend/'
+          dir: "backend/"
       - name: Create .env file
         run: |
           touch backend/.env
@@ -40,6 +40,10 @@ jobs:
           echo SECRET_KEY=${{ secrets.SECRET_KEY }} >> backend/.env
           echo JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }} >> backend/.env
           echo REDIRECT_URI=${{ secrets.REDIRECT_URI }} >> backend/.env
+          echo BUCKET_NAME=${{ secrets.BUCKET_NAME }} >> backend/.env
+          echo EMAIL_FOLDER=${{ secrets.EMAIL_FOLDER }} >> backend/.env
+          echo THREAD_FOLDER=${{ secrets.THREAD_FOLDER }} >> backend/.env
+          # TODO: Add JSON file path or direct JSON content -- PENDING
           cat backend/.env
       - name: Chmod wsgi Script
         run: sudo chmod +x backend/add-ini-wsgi-conf.sh
@@ -50,7 +54,7 @@ jobs:
       - name: Run Service Script
         run: sudo ./backend/add-service.sh inboxai-backend $USER flaskenv flask.ini
       - name: Chmod Nginx Script
-        run: sudo chmod +x backend/add-nginx-wsgi-conf.sh 
+        run: sudo chmod +x backend/add-nginx-wsgi-conf.sh
       - name: Run Nginx Script
         run: sudo ./backend/add-nginx-wsgi-conf.sh inboxai-backend flask.sock
       - name: Success

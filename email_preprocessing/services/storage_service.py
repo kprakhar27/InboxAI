@@ -5,7 +5,7 @@ from datetime import datetime
 
 from google.cloud import storage
 
-from email_preprocessing.config.settings import BUCKET_NAME, EMAIL_FOLDER, THREAD_FOLDER
+from backend.config import BUCKET_NAME, EMAIL_FOLDER, THREAD_FOLDER
 
 
 class StorageService:
