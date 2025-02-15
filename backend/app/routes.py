@@ -13,7 +13,6 @@ from googleapiclient.discovery import build
 from sqlalchemy import text
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
-from config import CREDENTIAL_PATH_FOR_GMAIL_API
 
 from email_preprocessing.pipelines.email_pipeline import EmailPipeline
 
@@ -31,7 +30,7 @@ else:
     os.environ.pop("OAUTHLIB_INSECURE_TRANSPORT", None)
 
 flow = Flow.from_client_secrets_file(
-    CREDENTIAL_PATH_FOR_GMAIL_API,
+    os.environ["CREDENTIAL_PATH_FOR_GMAIL_API"],
     scopes=[
         "https://www.googleapis.com/auth/gmail.readonly",
         "https://www.googleapis.com/auth/userinfo.email",
@@ -178,5 +177,4 @@ def process_raw_emails():
         )
 
     except Exception as e:
-        print("Error in process_raw_emails:", e)
-        return 200
+        return jsonify({"error": str(e)}), 400

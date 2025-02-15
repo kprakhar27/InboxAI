@@ -23,11 +23,18 @@ jobs:
       - name: Install Packages
         run: $(pwd)/backend/flaskenv/bin/pip3 install -r backend/requirements.txt
       - name: Create dynamic credentials.json file
-        id: create-json
+        id: create-json-1
         uses: jsdaniell/create-json@v1.2.3
         with:
           name: "credentials.json"
           json: ${{ secrets.GOOGLE_CREDENTIALS }}
+          dir: "backend/"
+      - name: Create dynamic google_service_account.json file
+        id: create-json-2
+        uses: jsdaniell/create-json@v1.2.3
+        with:
+          name: "google_sa.json"
+          json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
           dir: "backend/"
       - name: Create .env file
         run: |
@@ -43,7 +50,6 @@ jobs:
           echo BUCKET_NAME=${{ secrets.BUCKET_NAME }} >> backend/.env
           echo EMAIL_FOLDER=${{ secrets.EMAIL_FOLDER }} >> backend/.env
           echo THREAD_FOLDER=${{ secrets.THREAD_FOLDER }} >> backend/.env
-          # TODO: Add JSON file path or direct JSON content -- PENDING
           cat backend/.env
       - name: Chmod wsgi Script
         run: sudo chmod +x backend/add-ini-wsgi-conf.sh
