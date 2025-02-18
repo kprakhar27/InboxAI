@@ -3,6 +3,11 @@ import re
 
 from bs4 import BeautifulSoup
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
 
 def clean_text(payload):
     """

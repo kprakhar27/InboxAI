@@ -23,12 +23,14 @@ def create_app():
     with app.app_context():
         db.create_all()
 
-        from .auth import auth_bp
         from .revoked_tokens import is_token_revoked
-        from .routes import routes_bp
+        from .routes.api import api_bp
+        from .routes.auth import auth_bp
+        from .routes.cron import cron_bp
 
-        app.register_blueprint(routes_bp, url_prefix="/api")
+        app.register_blueprint(api_bp, url_prefix="/api")
         app.register_blueprint(auth_bp, url_prefix="/auth")
+        app.register_blueprint(cron_bp, url_prefix="/cron")
 
         # Configure JWT to check if the token is revoked by querying the database
         @jwt.token_in_blocklist_loader

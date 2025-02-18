@@ -5,6 +5,10 @@ from email.utils import parseaddr, parsedate_to_datetime
 
 from email_preprocessing.pipelines.preprocessing.cleaner import clean_text, html_to_text
 
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
 
 def process_email_content(msg):
     """

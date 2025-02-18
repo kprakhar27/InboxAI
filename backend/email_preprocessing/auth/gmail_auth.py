@@ -1,19 +1,24 @@
 import logging
 from datetime import datetime, timezone
 
+from app.models import GoogleToken
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
-from backend.app.models import GoogleToken
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 
 class GmailAuthenticator:
     def __init__(self, db_session):
         self.db_session = db_session
+        logging.info("GmailAuthenticator initialized with db_session")
 
     def get_credentials_from_token(self, google_token, client_config):
         """Convert database token to Google credentials."""
+        logging.info(f"Getting credentials for token: {google_token}")
         try:
             credentials = Credentials(
                 token=google_token.access_token,
@@ -26,7 +31,9 @@ class GmailAuthenticator:
 
             # Check if token needs refresh
             if not credentials.valid:
+                logging.info("Credentials are not valid, checking if refresh is needed")
                 if credentials.expired and credentials.refresh_token:
+                    logging.info("Refreshing credentials")
                     credentials.refresh(Request())
                     # Update token in database
                     google_token.access_token = credentials.token
@@ -34,7 +41,9 @@ class GmailAuthenticator:
                         credentials.expiry.timestamp()
                     )
                     self.db_session.commit()
+                    logging.info("Token refreshed and updated in database")
                 else:
+                    logging.error("Credentials are invalid and cannot be refreshed")
                     return None
 
             return credentials
@@ -44,16 +53,20 @@ class GmailAuthenticator:
 
     def get_authenticated_email(self, credentials):
         """Verify the email associated with credentials."""
+        logging.info("Getting authenticated email")
         try:
             service = build("gmail", "v1", credentials=credentials)
             profile = service.users().getProfile(userId="me").execute()
-            return profile.get("emailAddress")
+            email = profile.get("emailAddress")
+            logging.info(f"Authenticated email: {email}")
+            return email
         except Exception as e:
             logging.error(f"Error fetching authenticated email: {e}")
             return None
 
     def authenticate(self, email, client_config):
         """Authenticate using the new token structure."""
+        logging.info(f"Authenticating email: {email}")
         try:
             # Query the new token structure
             google_token = (
@@ -71,6 +84,7 @@ class GmailAuthenticator:
             # Verify email matches
             authenticated_email = self.get_authenticated_email(credentials)
             if authenticated_email and authenticated_email.lower() == email.lower():
+                logging.info("Email authenticated successfully")
                 return credentials
             else:
                 logging.error(f"Email mismatch: {authenticated_email} vs {email}")

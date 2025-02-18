@@ -1,16 +1,62 @@
 import logging
 from datetime import datetime
 
-from preprocessing.cleaner import clean_text
-from preprocessing.parser import extract_email_metadata, process_email_content
-from services.storage_service import StorageService
+from email_preprocessing.pipelines.preprocessing.cleaner import clean_text
+from email_preprocessing.pipelines.preprocessing.parser import (
+    extract_email_metadata,
+    process_email_content,
+)
+from email_preprocessing.services.storage_service import StorageService
+from email_preprocessing.utils.db_handler import (
+    fetch_ready_for_processing,
+    get_session,
+    update_processing_status,
+)
 
 
 class PreprocessingPipeline:
     """Pipeline for preprocessing raw emails/threads from GCS."""
 
-    def __init__(self):
+    def __init__(self, email):
         self.storage_service = StorageService()
+        self.email = email
+        self.db_session = get_session()
+
+    def process_ready_items(self):
+        """Process all items that are ready for preprocessing."""
+        try:
+            ready_items = fetch_ready_for_processing(self.db_session, email=self.email)
+            for item in ready_items:
+                if item.item_type == "email":
+                    raw_path = f"emails/raw/{item.email}/{item.raw_to_gcs_timestamp.strftime('%m%d%Yat%H%M')}/"
+                    cleaned_path = f"emails/cleaned/{item.email}/{item.raw_to_gcs_timestamp.strftime('%m%d%Yat%H%M')}/cleaned_{item.run_id}.eml"
+                    raw_files = self.storage_service.list_files(raw_path)
+                    for raw_file in raw_files:
+                        success = self.process_raw_email(raw_file, cleaned_path)
+                        if success:
+                            update_processing_status(
+                                self.db_session, item.run_id, "processed"
+                            )
+                        else:
+                            update_processing_status(
+                                self.db_session, item.run_id, "failed"
+                            )
+                elif item.item_type == "thread":
+                    raw_path = f"threads/raw/{item.email}/{item.raw_to_gcs_timestamp.strftime('%m%d%Yat%H%M')}/"
+                    cleaned_path = f"threads/cleaned/{item.email}/{item.raw_to_gcs_timestamp.strftime('%m%d%Yat%H%M')}/cleaned_{item.run_id}.json"
+                    raw_files = self.storage_service.list_files(raw_path)
+                    for raw_file in raw_files:
+                        success = self.process_raw_thread(raw_file, cleaned_path)
+                        if success:
+                            update_processing_status(
+                                self.db_session, item.run_id, "processed"
+                            )
+                        else:
+                            update_processing_status(
+                                self.db_session, item.run_id, "failed"
+                            )
+        except Exception as e:
+            logging.error(f"Error processing ready items: {e}")
 
     def process_raw_email(self, raw_email_path, processed_email_path):
         """Process a single raw email and store the processed version."""
