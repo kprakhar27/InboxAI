@@ -57,7 +57,9 @@ class StorageService:
         """List all files in a given GCS path."""
         try:
             blobs = self.bucket.list_blobs(prefix=path)
-            return [blob.name for blob in blobs]
+            logging.info(f"Listing files in path {path}")
+            file_names = [blob.name for blob in blobs]
+            return file_names
         except Exception as e:
             logging.error(f"Error listing files in path {path}: {e}")
             return []

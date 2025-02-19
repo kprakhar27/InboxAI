@@ -18,7 +18,7 @@ email_status_enum = ENUM(
 
 
 class Users(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(120), nullable=False)
     created_at = db.Column(db.TIMESTAMP, default=db.func.current_timestamp())
@@ -29,7 +29,7 @@ class Users(db.Model):
 class RevokedToken(db.Model):
     __tablename__ = "revoked_tokens"
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True)
     jti = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
@@ -37,7 +37,7 @@ class RevokedToken(db.Model):
 class GoogleToken(db.Model):
     __tablename__ = "google_tokens"
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     email = db.Column(db.String(120), nullable=False)
     access_token = db.Column(db.String(500), nullable=False)
@@ -53,7 +53,7 @@ class GoogleToken(db.Model):
 
 class EmailReadTracker(db.Model):
     __tablename__ = "email_read_tracker"
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     second_last_read_at = db.Column(db.DateTime)
     last_read_at = db.Column(db.DateTime, nullable=False)

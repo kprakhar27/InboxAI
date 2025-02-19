@@ -1,6 +1,4 @@
 import logging
-import os
-import sys
 from datetime import datetime
 from os.path import dirname, join
 
@@ -70,7 +68,6 @@ def process_emails():
 
         pipeline = EmailPipeline(email, flow.client_config)
         result = pipeline.process_items()
-        logging.info(f"I AM HERE {result}")
         email_total = result["emails"]["total"]
         email_saved = result["emails"]["successful"]
         thread_total = result["threads"]["total"]

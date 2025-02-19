@@ -123,15 +123,14 @@ def add_processing_summary(
         logger.error(f"Error adding processing summary for email {email}: {e}")
 
 
-def fetch_ready_for_processing(session):
-    """Fetch records that are ready for preprocessing."""
+def fetch_ready_for_processing(session, email=None):
+    """Fetch records that are ready for preprocessing. Optionally filter by email."""
     try:
-        return (
-            session.query(EmailReadyForProcessing)
-            .filter_by(status="unprocessed")
-            .order_by(EmailReadyForProcessing.email)
-            .all()
-        )
+        query = session.query(EmailReadyForProcessing).filter_by(status="unprocessed")
+        if email:
+            query = query.filter_by(email=email)
+        results = query.order_by(EmailReadyForProcessing.email).all()
+        return results
     except Exception as e:
         logger.error(f"Error fetching ready for processing records: {e}")
         return []

@@ -1,5 +1,7 @@
 import logging
 from datetime import datetime
+from email import policy
+from email.parser import BytesParser
 
 from email_preprocessing.pipelines.preprocessing.cleaner import clean_text
 from email_preprocessing.pipelines.preprocessing.parser import (
@@ -24,39 +26,60 @@ class PreprocessingPipeline:
 
     def process_ready_items(self):
         """Process all items that are ready for preprocessing."""
+        stats = {
+            "email": {"processed": 0, "failed": 0, "total": 0},
+            "thread": {"processed": 0, "failed": 0, "total": 0},
+            "timestamp": datetime.now().isoformat(),
+        }
         try:
             ready_items = fetch_ready_for_processing(self.db_session, email=self.email)
             for item in ready_items:
-                if item.item_type == "email":
+                if item.item_type == "emails":
                     raw_path = f"emails/raw/{item.email}/{item.raw_to_gcs_timestamp.strftime('%m%d%Yat%H%M')}/"
-                    cleaned_path = f"emails/cleaned/{item.email}/{item.raw_to_gcs_timestamp.strftime('%m%d%Yat%H%M')}/cleaned_{item.run_id}.eml"
+                    cleaned_path = f"emails/cleaned/{item.email}/{item.raw_to_gcs_timestamp.strftime('%m%d%Yat%H%M')}/"
                     raw_files = self.storage_service.list_files(raw_path)
+                    stats["email"]["total"] += len(raw_files)
+                    all_success = True
                     for raw_file in raw_files:
-                        success = self.process_raw_email(raw_file, cleaned_path)
-                        if success:
-                            update_processing_status(
-                                self.db_session, item.run_id, "processed"
-                            )
+                        cleaned_file_path = f"{cleaned_path}{raw_file.split('/')[-1]}"
+                        cleaned_file_path = cleaned_file_path[:-4] + ".json"
+                        success = self.process_raw_email(raw_file, cleaned_file_path)
+                        if not success:
+                            all_success = False
+                            stats["email"]["failed"] += 1
                         else:
-                            update_processing_status(
-                                self.db_session, item.run_id, "failed"
-                            )
-                elif item.item_type == "thread":
+                            stats["email"]["processed"] += 1
+                    if all_success:
+                        update_processing_status(
+                            self.db_session, item.run_id, "success"
+                        )
+                    else:
+                        update_processing_status(self.db_session, item.run_id, "failed")
+                elif item.item_type == "threads":
                     raw_path = f"threads/raw/{item.email}/{item.raw_to_gcs_timestamp.strftime('%m%d%Yat%H%M')}/"
-                    cleaned_path = f"threads/cleaned/{item.email}/{item.raw_to_gcs_timestamp.strftime('%m%d%Yat%H%M')}/cleaned_{item.run_id}.json"
+                    cleaned_path = f"threads/cleaned/{item.email}/{item.raw_to_gcs_timestamp.strftime('%m%d%Yat%H%M')}/"
                     raw_files = self.storage_service.list_files(raw_path)
+                    stats["thread"]["total"] += len(raw_files)
+                    all_success = True
                     for raw_file in raw_files:
-                        success = self.process_raw_thread(raw_file, cleaned_path)
-                        if success:
-                            update_processing_status(
-                                self.db_session, item.run_id, "processed"
-                            )
+                        cleaned_file_path = f"{cleaned_path}{raw_file.split('/')[-1]}"
+                        success = self.process_raw_thread(raw_file, cleaned_file_path)
+                        if not success:
+                            all_success = False
+                            stats["thread"]["failed"] += 1
                         else:
-                            update_processing_status(
-                                self.db_session, item.run_id, "failed"
-                            )
+                            stats["thread"]["processed"] += 1
+                    if all_success:
+                        update_processing_status(
+                            self.db_session, item.run_id, "success"
+                        )
+                    else:
+                        update_processing_status(self.db_session, item.run_id, "failed")
+            logging.info(f"Processing Summary: {stats}")
+            return stats
         except Exception as e:
             logging.error(f"Error processing ready items: {e}")
+            return stats
 
     def process_raw_email(self, raw_email_path, processed_email_path):
         """Process a single raw email and store the processed version."""
@@ -66,8 +89,11 @@ class PreprocessingPipeline:
             if not raw_data:
                 return False
 
+            # Decode raw email to string to be able to process it
+            email_message = BytesParser(policy=policy.default).parsebytes(raw_data)
+
             # Preprocess
-            processed_data = self._preprocess_email(raw_data)
+            processed_data = self._preprocess_email(email_message)
             if not processed_data:
                 return False
 
@@ -87,8 +113,10 @@ class PreprocessingPipeline:
             if not raw_data:
                 return False
 
+            thread_message = BytesParser(policy=policy.default).parsebytes(raw_data)
+
             # Preprocess
-            processed_data = self._preprocess_thread(raw_data)
+            processed_data = self._preprocess_thread(thread_message)
             if not processed_data:
                 return False
 
@@ -102,42 +130,34 @@ class PreprocessingPipeline:
 
     def _preprocess_email(self, raw_data):
         """Preprocess a single email."""
-        try:
-            metadata = extract_email_metadata(raw_data)
-            content, attachments = process_email_content(raw_data)
-            cleaned_content = clean_text(content)
+        metadata = extract_email_metadata(raw_data)
+        content, attachments = process_email_content(raw_data)
+        cleaned_content = clean_text(content)
 
-            return {
-                "metadata": metadata,
-                "content": cleaned_content,
-                "attachments": attachments,
-                "processing_info": {
-                    "processed_timestamp": datetime.now().isoformat(),
-                    "content_length": len(cleaned_content),
-                    "has_attachments": bool(attachments),
-                },
-            }
-        except Exception as e:
-            logging.error(f"Error preprocessing email: {e}")
-            return None
+        return {
+            "metadata": metadata,
+            "content": cleaned_content,
+            "attachments": attachments,
+            "processing_info": {
+                "processed_timestamp": datetime.now().isoformat(),
+                "content_length": len(cleaned_content),
+                "has_attachments": bool(attachments),
+            },
+        }
 
     def _preprocess_thread(self, raw_data):
         """Preprocess a thread and all its messages."""
-        try:
-            processed_messages = []
-            for message in raw_data.get("messages", []):
-                processed_message = self._preprocess_email(message)
-                if processed_message:
-                    processed_messages.append(processed_message)
+        processed_messages = []
+        for message in raw_data.get("messages", []):
+            processed_message = self._preprocess_email(message)
+            if processed_message:
+                processed_messages.append(processed_message)
 
-            return {
-                "thread_id": raw_data.get("id"),
-                "messages": processed_messages,
-                "processing_info": {
-                    "processed_timestamp": datetime.now().isoformat(),
-                    "message_count": len(processed_messages),
-                },
-            }
-        except Exception as e:
-            logging.error(f"Error preprocessing thread: {e}")
-            return None
+        return {
+            "thread_id": raw_data.get("id"),
+            "messages": processed_messages,
+            "processing_info": {
+                "processed_timestamp": datetime.now().isoformat(),
+                "message_count": len(processed_messages),
+            },
+        }
