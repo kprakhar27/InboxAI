@@ -48,8 +48,10 @@ jobs:
           echo JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }} >> backend/.env
           echo REDIRECT_URI=${{ secrets.REDIRECT_URI }} >> backend/.env
           echo BUCKET_NAME=${{ secrets.BUCKET_NAME }} >> backend/.env
-          echo EMAIL_FOLDER=${{ secrets.EMAIL_FOLDER }} >> backend/.env
-          echo THREAD_FOLDER=${{ secrets.THREAD_FOLDER }} >> backend/.env
+          echo EMAIL_FOLDER=emails >> backend/.env
+          echo THREAD_FOLDER=threads >> backend/.env
+          echo CREDENTIAL_PATH_FOR_GMAIL_API=credentials.json >> backend/.env
+          echo GOOGLE_APPLICATION_CREDENTIALS=google_sa.json >> backend/.env
           cat backend/.env
       - name: Chmod wsgi Script
         run: sudo chmod +x backend/add-ini-wsgi-conf.sh
