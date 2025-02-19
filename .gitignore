@@ -1,3 +1,5 @@
+*.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -196,3 +198,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# ENV
+backend/inbox-ai-450407-8c3c788dbf0a.json

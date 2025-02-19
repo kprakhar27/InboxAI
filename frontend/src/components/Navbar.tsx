@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -20,18 +21,22 @@ export const Navbar = () => {
       }`}
     >
       <div className="container mx-auto flex items-center justify-between">
-        <div className="flex items-center space-x-2">
+        <Link to="/" className="flex items-center space-x-2">
           <span className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             InboxAI
           </span>
-        </div>
+        </Link>
         <div className="flex items-center space-x-4">
-          <Button variant="ghost" className="text-foreground">
-            Login
-          </Button>
-          <Button className="bg-primary hover:bg-primary/90">
-            Get Started
-          </Button>
+          <Link to="/login">
+            <Button variant="ghost" className="text-foreground">
+              Login
+            </Button>
+          </Link>
+          <Link to="/login" state={{ register: true }}>
+            <Button className="bg-primary hover:bg-primary/90">
+              Get Started
+            </Button>
+          </Link>
         </div>
       </div>
     </nav>
