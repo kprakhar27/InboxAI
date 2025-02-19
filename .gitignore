@@ -198,3 +198,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# ENV
+backend/inbox-ai-450407-8c3c788dbf0a.json

@@ -2,11 +2,11 @@ name: Deploy to Oracle Server
 
 on:
   push:
-    branches: ['main']
-    paths: ['backend/**']
+    branches: ["main"]
+    paths: ["backend/**"]
   pull_request:
-    branches: ['main']
-    paths: ['backend/**']
+    branches: ["main"]
+    paths: ["backend/**"]
 
 jobs:
   deploy:
@@ -23,12 +23,19 @@ jobs:
       - name: Install Packages
         run: $(pwd)/backend/flaskenv/bin/pip3 install -r backend/requirements.txt
       - name: Create dynamic credentials.json file
-        id: create-json
+        id: create-json-1
         uses: jsdaniell/create-json@v1.2.3
         with:
           name: "credentials.json"
           json: ${{ secrets.GOOGLE_CREDENTIALS }}
-          dir: 'backend/'
+          dir: "backend/"
+      - name: Create dynamic google_service_account.json file
+        id: create-json-2
+        uses: jsdaniell/create-json@v1.2.3
+        with:
+          name: "google_sa.json"
+          json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          dir: "backend/"
       - name: Create .env file
         run: |
           touch backend/.env
@@ -40,6 +47,11 @@ jobs:
           echo SECRET_KEY=${{ secrets.SECRET_KEY }} >> backend/.env
           echo JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }} >> backend/.env
           echo REDIRECT_URI=${{ secrets.REDIRECT_URI }} >> backend/.env
+          echo BUCKET_NAME=${{ secrets.BUCKET_NAME }} >> backend/.env
+          echo EMAIL_FOLDER=emails >> backend/.env
+          echo THREAD_FOLDER=threads >> backend/.env
+          echo CREDENTIAL_PATH_FOR_GMAIL_API=credentials.json >> backend/.env
+          echo GOOGLE_APPLICATION_CREDENTIALS=google_sa.json >> backend/.env
           cat backend/.env
       - name: Chmod wsgi Script
         run: sudo chmod +x backend/add-ini-wsgi-conf.sh
@@ -50,7 +62,7 @@ jobs:
       - name: Run Service Script
         run: sudo ./backend/add-service.sh inboxai-backend $USER flaskenv flask.ini
       - name: Chmod Nginx Script
-        run: sudo chmod +x backend/add-nginx-wsgi-conf.sh 
+        run: sudo chmod +x backend/add-nginx-wsgi-conf.sh
       - name: Run Nginx Script
         run: sudo ./backend/add-nginx-wsgi-conf.sh inboxai-backend flask.sock
       - name: Success

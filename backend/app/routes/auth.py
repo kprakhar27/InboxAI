@@ -1,16 +1,16 @@
-from flask import request, jsonify, Blueprint
-from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.exceptions import BadRequestKeyError
+from flask import Blueprint, jsonify, request
 from flask_jwt_extended import (
     create_access_token,
-    jwt_required,
-    get_jwt_identity,
     get_jwt,
+    get_jwt_identity,
+    jwt_required,
 )
 from sqlalchemy import text
+from werkzeug.exceptions import BadRequestKeyError
+from werkzeug.security import check_password_hash, generate_password_hash
 
-from .models import Users, db
-from .revoked_tokens import add_token_to_blocklist
+from ..models import Users, db
+from ..revoked_tokens import add_token_to_blocklist
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -27,9 +27,7 @@ def register():
         data = request.get_json()
         username = data.get("username")
         password = data.get("password")
-        role = data.get(
-            "role", "user"
-        )  # Default to "user" if role is not provided
+        role = data.get("role", "user")  # Default to "user" if role is not provided
 
         if not username:
             return jsonify({"error": "Username is required"}), 400
@@ -56,7 +54,7 @@ def register():
 
             return (
                 jsonify(
-                    {"message": "User registered successfully", "token": access_token}
+                    {"message": "User registered successfully", "access_token": access_token}
                 ),
                 201,
             )
