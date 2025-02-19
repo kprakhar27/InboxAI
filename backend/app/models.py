@@ -29,7 +29,7 @@ class Users(db.Model):
 class RevokedToken(db.Model):
     __tablename__ = "revoked_tokens"
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     jti = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
@@ -53,7 +53,7 @@ class GoogleToken(db.Model):
 
 class EmailReadTracker(db.Model):
     __tablename__ = "email_read_tracker"
-    id = db.Column(UUID(as_uuid=True), primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = db.Column(db.String(120), unique=True, nullable=False)
     second_last_read_at = db.Column(db.DateTime)
     last_read_at = db.Column(db.DateTime, nullable=False)
@@ -88,6 +88,20 @@ class EmailProcessingSummary(db.Model):
     email = db.Column(db.String(120), nullable=False)
     total_emails_processed = db.Column(db.Integer, nullable=False)
     total_threads_processed = db.Column(db.Integer, nullable=False)
+    failed_emails = db.Column(db.Integer, nullable=False)
+    failed_threads = db.Column(db.Integer, nullable=False)
+    run_timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+
+class EmailPreprocessingSummary(db.Model):
+    __tablename__ = "email_preprocessing_summary"
+
+    run_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email = db.Column(db.String(120), nullable=False)
+    total_emails_processed = db.Column(db.Integer, nullable=False)
+    total_threads_processed = db.Column(db.Integer, nullable=False)
+    successful_emails = db.Column(db.Integer, nullable=False)
+    successful_threads = db.Column(db.Integer, nullable=False)
     failed_emails = db.Column(db.Integer, nullable=False)
     failed_threads = db.Column(db.Integer, nullable=False)
     run_timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())

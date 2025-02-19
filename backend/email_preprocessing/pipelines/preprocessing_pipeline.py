@@ -10,6 +10,7 @@ from email_preprocessing.pipelines.preprocessing.parser import (
 )
 from email_preprocessing.services.storage_service import StorageService
 from email_preprocessing.utils.db_handler import (
+    add_preprocessing_summary,
     fetch_ready_for_processing,
     get_session,
     update_processing_status,
@@ -76,6 +77,20 @@ class PreprocessingPipeline:
                     else:
                         update_processing_status(self.db_session, item.run_id, "failed")
             logging.info(f"Processing Summary: {stats}")
+            if add_preprocessing_summary(
+                self.db_session,
+                self.email,
+                stats["email"]["total"],
+                stats["thread"]["total"],
+                stats["email"]["processed"],
+                stats["thread"]["processed"],
+                stats["email"]["failed"],
+                stats["thread"]["failed"],
+            ):
+                logging.info("Committed preprocessing summary to the database")
+            else:
+                logging.error("Failed to commit preprocessing summary to the database")
+
             return stats
         except Exception as e:
             logging.error(f"Error processing ready items: {e}")

@@ -4,7 +4,12 @@ import os
 from datetime import datetime, timedelta, timezone
 from os.path import dirname, join
 
-from app.models import EmailProcessingSummary, EmailReadTracker, EmailReadyForProcessing
+from app.models import (
+    EmailPreprocessingSummary,
+    EmailProcessingSummary,
+    EmailReadTracker,
+    EmailReadyForProcessing,
+)
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -49,7 +54,7 @@ def get_last_read_timestamp(session, email):
             return tracker.last_read_at
         else:
             # Default to 6 months ago if no record exists
-            default_timestamp = datetime.now(timezone.utc) - timedelta(days=20)
+            default_timestamp = datetime.now(timezone.utc) - timedelta(days=180)
             logger.info(
                 f"No record found. Returning default timestamp: {default_timestamp}"
             )
@@ -149,4 +154,34 @@ def update_processing_status(session, run_id, status):
     except Exception as e:
         session.rollback()
         logger.error(f"Error updating processing status for run_id {run_id}: {e}")
+        return False
+
+
+def add_preprocessing_summary(
+    session,
+    email,
+    total_emails_processed,
+    total_threads_processed,
+    successful_emails,
+    successful_threads,
+    failed_emails,
+    failed_threads,
+):
+    """Add a preprocessing summary record to the database."""
+    try:
+        summary = EmailPreprocessingSummary(
+            email=email,
+            total_emails_processed=total_emails_processed,
+            total_threads_processed=total_threads_processed,
+            successful_emails=successful_emails,
+            successful_threads=successful_threads,
+            failed_emails=failed_emails,
+            failed_threads=failed_threads,
+        )
+        session.add(summary)
+        session.commit()
+        return True
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error adding preprocessing summary for email {email}: {e}")
         return False
