@@ -40,7 +40,7 @@ jobs:
         run: |
           touch backend/.env
           echo DB_USER=${{ secrets.DB_USER }} >> backend/.env
-          echo DB_PASWWORD=${{ secrets.DB_PASWWORD }} >> backend/.env
+          echo DB_PASSWORD=${{ secrets.DB_PASSWORD }} >> backend/.env
           echo DB_HOST=${{ secrets.HOST }} >> backend/.env
           echo DB_PORT=${{ secrets.DB_PORT }} >> backend/.env
           echo DB_NAME=${{ secrets.DB_NAME }} >> backend/.env
