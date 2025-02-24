@@ -1,0 +1,41 @@
+graph TD
+A[Frontend Trigger] --> B[Email Read Pipeline]
+
+    subgraph Email Read Pipeline
+        B --> C[Create DB Session]
+        C --> D[Gmail OAuth2 Authentication]
+        D --> E[Get Last Email Read Timestamp]
+        E --> F{Condition Check\nLast Read Time}
+        F -->|Full Load 6 Months| G[Get Gmail List: Full Load]
+        F -->|Usual CRON 6 Hours| H[Get Gmail List: 6hr Batch]
+        F -->|Less Than 6 Hours| I[Get Gmail List: Recent]
+        G --> J[Save Emails to GCS]
+        H --> J
+        I --> J
+        J --> K[Publish Metrics]
+        J --> L{Any Batch Failure?}
+        L -->|Yes| M[Send Failure Email]
+        L -->|No| N[Trigger Preprocessing]
+    end
+
+    subgraph Preprocessing Pipeline
+        N --> O[Create DB Session]
+        O --> P[Fetch Files from GCS]
+        P --> Q[Process Raw Email/Thread]
+        Q --> R[Write Processed Data to GCS]
+        R --> S[Publish Metrics]
+        R --> T{Any Batch Failure?}
+        T -->|Yes| U[Send Failure Email]
+        T -->|No| V[Trigger Embedding]
+    end
+
+    subgraph Embedding Pipeline
+        V --> W[Create DB Session]
+        W --> X[Fetch Processed Files]
+        X --> Y[Generate Embeddings]
+        Y --> Z[Update Chroma DB]
+        Z --> AA[Publish Metrics]
+        Z --> AB{Any Batch Failure?}
+        AB -->|Yes| AC[Send Failure Email]
+        AB -->|No| AD[Send Success Email]
+    end

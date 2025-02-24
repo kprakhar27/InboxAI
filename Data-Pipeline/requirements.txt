@@ -1,0 +1,7 @@
+apache-airflow==2.10.2
+apache-airflow-providers-google
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+psycopg2-binary
+redis

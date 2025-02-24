@@ -67,7 +67,7 @@ def process_emails():
             return jsonify({"message": "Email header is missing"}), 400
 
         pipeline = EmailPipeline(email, flow.client_config)
-        result = pipeline.process_items()
+        result = pipeline.process_items_batch()
         email_total = result["emails"]["total"]
         email_saved = result["emails"]["successful"]
         thread_total = result["threads"]["total"]
