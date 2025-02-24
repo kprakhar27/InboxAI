@@ -50,8 +50,8 @@ graph TD
         W --> X[Fetch Processed Emails]
 
         %% Parallel Embedding Generation
-        X -->|Parallel| Y1[Generate Embeddings Batch 1]
-        X -->|Parallel| Y2[Generate Embeddings Batch 2]
+        X -->|Parallel| Y1[Generate Embeddings Batch Emails]
+        X -->|Parallel| Y2[Generate Embeddings Batch Threads]
         Y1 --> Z[(Update Chroma DB)]
         Y2 --> Z
 
