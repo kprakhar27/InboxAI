@@ -9,14 +9,15 @@ graph TD
         C --> D[Gmail OAuth2 Authentication]
         D --> E[Get Last Email Read Timestamp]
         E --> F{Last Read Time Check}
-        
-        F -- Full Load (6 Months) --> G[Fetch Emails: Full Load]
-        F -- Scheduled Run (6 Hours) --> H[Fetch Emails: Last 6 Hours]
-        F -- Recent (<6 Hours) --> I[Fetch Emails: Recent]
 
-        G --> J[(Store Emails in GCS)]
-        H --> J
-        I --> J
+        %% Parallel Fetching Paths
+        F -- Full Load (6 Months) --> G1[Fetch Emails in Parallel]
+        F -- Scheduled Run (6 Hours) --> H1[Fetch Emails in Parallel]
+        F -- Recent (<6 Hours) --> I1[Fetch Emails in Parallel]
+
+        G1 -->|Parallel| J[(Store Emails in GCS)]
+        H1 -->|Parallel| J
+        I1 -->|Parallel| J
 
         J --> K[Publish Metrics]
         J --> L{Batch Failure?}
@@ -29,8 +30,12 @@ graph TD
     subgraph Preprocessing Pipeline
         N --> O[Create DB Session]
         O --> P[Fetch Raw Emails from GCS]
-        P --> Q[Process Email & Threads]
-        Q --> R[(Store Processed Data in GCS)]
+
+        %% Parallel Processing
+        P -->|Parallel| Q1[Process Email Content]
+        P -->|Parallel| Q2[Process Email Threads]
+        Q1 --> R[(Store Processed Data in GCS)]
+        Q2 --> R
 
         R --> S[Publish Metrics]
         R --> T{Batch Failure?}
@@ -43,8 +48,12 @@ graph TD
     subgraph Embedding Pipeline
         V --> W[Create DB Session]
         W --> X[Fetch Processed Emails]
-        X --> Y[Generate Embeddings]
-        Y --> Z[(Update Chroma DB)]
+
+        %% Parallel Embedding Generation
+        X -->|Parallel| Y1[Generate Embeddings Batch 1]
+        X -->|Parallel| Y2[Generate Embeddings Batch 2]
+        Y1 --> Z[(Update Chroma DB)]
+        Y2 --> Z
 
         Z --> AA[Publish Metrics]
         Z --> AB{Batch Failure?}
