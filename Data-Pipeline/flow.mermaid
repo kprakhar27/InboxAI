@@ -2,12 +2,7 @@ flowchart TD
     %% Frontend Trigger
     A[Frontend Trigger] -->|Start| B[Email Read Pipeline]
     
-    %% Resource Manager - New Component
-    RM[Resource Manager] -.->|Connection Pooling<br>Rate Limiting| EmailReadPipeline
-    RM -.->|Resource Management| PreprocessingPipeline
-    RM -.->|Resource Allocation| EmbeddingPipeline
-    
-    %% Logging System - New Component
+    %% Logging System
     LOG[Centralized Logging] -.->|Audit Trail| EmailReadPipeline
     LOG -.->|Operation Logs| PreprocessingPipeline
     LOG -.->|System Events| EmbeddingPipeline
@@ -39,7 +34,7 @@ flowchart TD
         DV1 --> N[Trigger Preprocessing]
     end
     
-    %% Data Governance - New Component
+    %% Data Governance
     DG[Data Governance] -.->|PII Detection| J
     DG -.->|Retention Policies| R
     DG -.->|Access Control| Z
@@ -89,7 +84,10 @@ flowchart TD
         AB -- No --> AD[Send Success Notification ✅]
     end
     
-    %% Performance Monitoring - New Component
-    PM[Performance Monitoring] -.->|Track Latency| EmailReadPipeline
-    PM -.->|Resource Usage| PreprocessingPipeline
-    PM -.->|System Health| EmbeddingPipeline
+    %% Metadata Tracking - New Component
+    MT[Metadata Tracking] -.->|Processing Status| EmailReadPipeline
+    MT -.->|Pipeline Lineage| PreprocessingPipeline
+    MT -.->|Data Catalog| EmbeddingPipeline
+    MT -.->|Version Control| J
+    MT -.->|Transformation History| R
+    MT -.->|Embedding Provenance| Z
