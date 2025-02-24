@@ -1,41 +1,54 @@
 graph TD
-A[Frontend Trigger] --> B[Email Read Pipeline]
 
+    %% Frontend Trigger
+    A[Frontend Trigger] -->|Start| B[Email Read Pipeline]
+
+    %% Email Read Pipeline
     subgraph Email Read Pipeline
         B --> C[Create DB Session]
         C --> D[Gmail OAuth2 Authentication]
         D --> E[Get Last Email Read Timestamp]
-        E --> F{Condition Check Last Read Time}
-        F -->|Full Load 6 Months| G[Get Gmail List: Full Load]
-        F -->|Usual CRON 6 Hours| H[Get Gmail List: 6hr Batch]
-        F -->|Less Than 6 Hours| I[Get Gmail List: Recent]
-        G --> J[Save Emails to GCS]
+        E --> F{Last Read Time Check}
+        
+        F -->|Full Load (6 Months)| G[Fetch Emails: Full Load]
+        F -->|Scheduled Run (6 Hours)| H[Fetch Emails: Last 6 Hours]
+        F -->|Recent (<6 Hours)| I[Fetch Emails: Recent]
+
+        G --> J[(Store Emails in GCS)]
         H --> J
         I --> J
+
         J --> K[Publish Metrics]
-        J --> L{Any Batch Failure?}
-        L -->|Yes| M[Send Failure Email]
+        J --> L{Batch Failure?}
+
+        L -->|Yes| M[Send Failure Alert 📩]
         L -->|No| N[Trigger Preprocessing]
     end
 
+    %% Preprocessing Pipeline
     subgraph Preprocessing Pipeline
         N --> O[Create DB Session]
-        O --> P[Fetch Files from GCS]
-        P --> Q[Process Raw Email/Thread]
-        Q --> R[Write Processed Data to GCS]
+        O --> P[Fetch Raw Emails from GCS]
+        P --> Q[Process Email & Threads]
+        Q --> R[(Store Processed Data in GCS)]
+
         R --> S[Publish Metrics]
-        R --> T{Any Batch Failure?}
-        T -->|Yes| U[Send Failure Email]
+        R --> T{Batch Failure?}
+
+        T -->|Yes| U[Send Failure Alert 📩]
         T -->|No| V[Trigger Embedding]
     end
 
+    %% Embedding Pipeline
     subgraph Embedding Pipeline
         V --> W[Create DB Session]
-        W --> X[Fetch Processed Files]
+        W --> X[Fetch Processed Emails]
         X --> Y[Generate Embeddings]
-        Y --> Z[Update Chroma DB]
+        Y --> Z[(Update Chroma DB)]
+
         Z --> AA[Publish Metrics]
-        Z --> AB{Any Batch Failure?}
-        AB -->|Yes| AC[Send Failure Email]
-        AB -->|No| AD[Send Success Email]
+        Z --> AB{Batch Failure?}
+
+        AB -->|Yes| AC[Send Failure Alert]
+        AB -->|No| AD[Send Success Notification]
     end
