@@ -21,7 +21,7 @@ graph TD
         J --> K[Publish Metrics]
         J --> L{Batch Failure?}
 
-        L -->|Yes| M[Send Failure Alert 📩]
+        L -->|Yes| M[Send Failure Alert]
         L -->|No| N[Trigger Preprocessing]
     end
 
@@ -35,7 +35,7 @@ graph TD
         R --> S[Publish Metrics]
         R --> T{Batch Failure?}
 
-        T -->|Yes| U[Send Failure Alert 📩]
+        T -->|Yes| U[Send Failure Alert]
         T -->|No| V[Trigger Embedding]
     end
 
