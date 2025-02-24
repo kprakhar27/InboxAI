@@ -3,7 +3,7 @@ flowchart TD
     A[Frontend Trigger] -->|Start| B[Email Read Pipeline]
     
     %% Resource Manager - New Component
-    RM[Resource Manager] -.->|Connection Pooling\nRate Limiting| EmailReadPipeline
+    RM[Resource Manager] -.->|Connection Pooling<br>Rate Limiting| EmailReadPipeline
     RM -.->|Resource Management| PreprocessingPipeline
     RM -.->|Resource Allocation| EmbeddingPipeline
     
