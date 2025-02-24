@@ -1,63 +1,95 @@
-graph TD
-
+flowchart TD
     %% Frontend Trigger
     A[Frontend Trigger] -->|Start| B[Email Read Pipeline]
-
+    
+    %% Resource Manager - New Component
+    RM[Resource Manager] -.->|Connection Pooling\nRate Limiting| EmailReadPipeline
+    RM -.->|Resource Management| PreprocessingPipeline
+    RM -.->|Resource Allocation| EmbeddingPipeline
+    
+    %% Logging System - New Component
+    LOG[Centralized Logging] -.->|Audit Trail| EmailReadPipeline
+    LOG -.->|Operation Logs| PreprocessingPipeline
+    LOG -.->|System Events| EmbeddingPipeline
+    
     %% Email Read Pipeline
-    subgraph Email Read Pipeline
+    subgraph EmailReadPipeline[Email Read Pipeline]
         B --> C[Create DB Session]
         C --> D[Gmail OAuth2 Authentication]
         D --> E[Get Last Email Read Timestamp]
         E --> F{Last Read Time Check}
-
+        
         %% Parallel Fetching Paths
-        F -- Full Load (6 Months) --> G1[Fetch Emails in Parallel]
-        F -- Scheduled Run (6 Hours) --> H1[Fetch Emails in Parallel]
-        F -- Recent (<6 Hours) --> I1[Fetch Emails in Parallel]
-
-        G1 -->|Parallel| J[(Store Emails in GCS)]
-        H1 -->|Parallel| J
-        I1 -->|Parallel| J
-
+        F -- Full Load\n(6 Months) --> G1[Fetch Emails in Parallel]
+        F -- Scheduled Run\n(6 Hours) --> H1[Fetch Emails in Parallel]
+        F -- Recent\n(<6 Hours) --> I1[Fetch Emails in Parallel]
+        
+        G1 -->|Parallel| RT1{Retry Logic}
+        H1 -->|Parallel| RT1
+        I1 -->|Parallel| RT1
+        
+        RT1 -- Retry Failed\nOperations --> G1
+        RT1 -- Success --> J[(Store Emails in GCS)]
+        
         J --> K[Publish Metrics]
         J --> L{Batch Failure?}
-
+        
         L -- Yes --> M[Send Failure Alert 📩]
-        L -- No --> N[Trigger Preprocessing]
+        L -- No --> DV1[Data Validation]
+        DV1 --> N[Trigger Preprocessing]
     end
-
+    
+    %% Data Governance - New Component
+    DG[Data Governance] -.->|PII Detection| J
+    DG -.->|Retention Policies| R
+    DG -.->|Access Control| Z
+    
     %% Preprocessing Pipeline
-    subgraph Preprocessing Pipeline
+    subgraph PreprocessingPipeline[Preprocessing Pipeline]
         N --> O[Create DB Session]
         O --> P[Fetch Raw Emails from GCS]
-
+        
         %% Parallel Processing
         P -->|Parallel| Q1[Process Email Content]
         P -->|Parallel| Q2[Process Email Threads]
-        Q1 --> R[(Store Processed Data in GCS)]
-        Q2 --> R
-
+        
+        Q1 --> RT2{Retry Logic}
+        Q2 --> RT2
+        
+        RT2 -- Retry Failed\nOperations --> Q1
+        RT2 -- Success --> R[(Store Processed Data in GCS)]
+        
         R --> S[Publish Metrics]
         R --> T{Batch Failure?}
-
+        
         T -- Yes --> U[Send Failure Alert 📩]
-        T -- No --> V[Trigger Embedding]
+        T -- No --> DV2[Data Validation]
+        DV2 --> V[Trigger Embedding]
     end
-
+    
     %% Embedding Pipeline
-    subgraph Embedding Pipeline
+    subgraph EmbeddingPipeline[Embedding Pipeline]
         V --> W[Create DB Session]
         W --> X[Fetch Processed Emails]
-
+        
         %% Parallel Embedding Generation
         X -->|Parallel| Y1[Generate Embeddings Batch Emails]
         X -->|Parallel| Y2[Generate Embeddings Batch Threads]
-        Y1 --> Z[(Update Chroma DB)]
-        Y2 --> Z
-
+        
+        Y1 --> RT3{Retry Logic}
+        Y2 --> RT3
+        
+        RT3 -- Retry Failed\nOperations --> Y1
+        RT3 -- Success --> Z[(Store in Chroma DB)]
+        
         Z --> AA[Publish Metrics]
         Z --> AB{Batch Failure?}
-
+        
         AB -- Yes --> AC[Send Failure Alert 📩]
         AB -- No --> AD[Send Success Notification ✅]
     end
+    
+    %% Performance Monitoring - New Component
+    PM[Performance Monitoring] -.->|Track Latency| EmailReadPipeline
+    PM -.->|Resource Usage| PreprocessingPipeline
+    PM -.->|System Health| EmbeddingPipeline
