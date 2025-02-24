@@ -10,9 +10,9 @@ graph TD
         D --> E[Get Last Email Read Timestamp]
         E --> F{Last Read Time Check}
         
-        F -->|Full Load (6 Months)| G[Fetch Emails: Full Load]
-        F -->|Scheduled Run (6 Hours)| H[Fetch Emails: Last 6 Hours]
-        F -->|Recent (<6 Hours)| I[Fetch Emails: Recent]
+        F -- Full Load (6 Months) --> G[Fetch Emails: Full Load]
+        F -- Scheduled Run (6 Hours) --> H[Fetch Emails: Last 6 Hours]
+        F -- Recent (<6 Hours) --> I[Fetch Emails: Recent]
 
         G --> J[(Store Emails in GCS)]
         H --> J
@@ -21,8 +21,8 @@ graph TD
         J --> K[Publish Metrics]
         J --> L{Batch Failure?}
 
-        L -->|Yes| M[Send Failure Alert]
-        L -->|No| N[Trigger Preprocessing]
+        L -- Yes --> M[Send Failure Alert 📩]
+        L -- No --> N[Trigger Preprocessing]
     end
 
     %% Preprocessing Pipeline
@@ -35,8 +35,8 @@ graph TD
         R --> S[Publish Metrics]
         R --> T{Batch Failure?}
 
-        T -->|Yes| U[Send Failure Alert]
-        T -->|No| V[Trigger Embedding]
+        T -- Yes --> U[Send Failure Alert 📩]
+        T -- No --> V[Trigger Embedding]
     end
 
     %% Embedding Pipeline
@@ -49,6 +49,6 @@ graph TD
         Z --> AA[Publish Metrics]
         Z --> AB{Batch Failure?}
 
-        AB -->|Yes| AC[Send Failure Alert]
-        AB -->|No| AD[Send Success Notification]
+        AB -- Yes --> AC[Send Failure Alert 📩]
+        AB -- No --> AD[Send Success Notification ✅]
     end
