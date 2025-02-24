@@ -5,7 +5,7 @@ A[Frontend Trigger] --> B[Email Read Pipeline]
         B --> C[Create DB Session]
         C --> D[Gmail OAuth2 Authentication]
         D --> E[Get Last Email Read Timestamp]
-        E --> F{Condition Check\nLast Read Time}
+        E --> F{Condition Check Last Read Time}
         F -->|Full Load 6 Months| G[Get Gmail List: Full Load]
         F -->|Usual CRON 6 Hours| H[Get Gmail List: 6hr Batch]
         F -->|Less Than 6 Hours| I[Get Gmail List: Recent]
