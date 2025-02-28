@@ -1,0 +1,13 @@
+apache-airflow==2.10.2
+apache-airflow-providers-google>=10.22.0
+apache-airflow-providers-postgres>=5.10.0
+google-api-python-client>=2.159.0
+google-auth-httplib2>=0.2.0
+google-auth-oauthlib>=1.2.1
+psycopg2-binary>=2.9.9
+python-dotenv>=1.0.1
+redis>=5.0.1
+annotated-types>=0.7.0
+pydantic>=2.0.0
+pandas>=2.0.0
+pyarrow>=14.0.0
