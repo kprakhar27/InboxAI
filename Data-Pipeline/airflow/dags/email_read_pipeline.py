@@ -44,19 +44,17 @@ default_args = {
 
 with DAG(
     dag_id="email_processing_pipeline_v2",
-    schedule_interval="0 */6 * * *",
     default_args=default_args,
     description="Email Processing Pipeline: Fetches emails, processes them, and uploads data to GCS.",
     catchup=False,
-    max_active_runs=1,
+    max_active_runs=4,
     tags=["email", "processing", "pipeline"],
     params={
-        "email_address": "pc612001@gmail.com",  # Default email address
-        "batch_size": 100,  # Default batch size
+        "email_address": "pc612001@gmail.com",
     },
 ) as dag:
     """
-    ### Email Processing Pipeline (Improved)
+    ### Email Processing Pipeline
 
     This DAG performs the following steps:
     1. Fetches the email address from the DAG run configuration.
@@ -179,7 +177,7 @@ with DAG(
 
         # Task 9: Data Validation
         data_validation = PythonOperator(
-            task_id="data_validation",
+            task_id="validation_task",
             python_callable=validation_task,
             provide_context=True,
             doc="Performs data validation on the processed emails.",

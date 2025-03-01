@@ -155,6 +155,7 @@ def update_processing_status(session, run_id, status):
 
 def add_preprocessing_summary(
     session,
+    run_id,
     email,
     total_emails_processed,
     total_threads_processed,
@@ -166,6 +167,7 @@ def add_preprocessing_summary(
     """Add a preprocessing summary record to the database."""
     try:
         summary = EmailPreprocessingSummary(
+            run_id=run_id,
             email=email,
             total_emails_processed=total_emails_processed,
             total_threads_processed=total_threads_processed,
