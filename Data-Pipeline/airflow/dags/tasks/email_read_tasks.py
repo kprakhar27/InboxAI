@@ -2,12 +2,14 @@ import csv
 import json
 import logging
 import os
+import traceback
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 import pandas as pd
+from airflow.configuration import conf
 from airflow.exceptions import AirflowException
-from airflow_utils import generate_run_id, save_emails
+from airflow.utils.email import send_email
 from auth.gmail_auth import GmailAuthenticator
 from dotenv import load_dotenv
 from googleapiclient.errors import HttpError
@@ -16,13 +18,20 @@ from services.storage_service import StorageService
 from utils.airflow_utils import (
     authenticate_gmail,
     fetch_emails,
+    generate_run_id,
     get_flow,
     get_timestamps,
     handle_http_error,
     retrieve_email_data,
+    save_emails,
     validate_emails,
 )
-from utils.db_utils import get_db_session, get_last_read_timestamp
+from utils.db_utils import (
+    add_preprocessing_summary,
+    get_db_session,
+    get_last_read_timestamp,
+    update_last_read_timestamp,
+)
 
 logger = logging.getLogger(__name__)
 load_dotenv(os.path.join(os.path.dirname(__file__), "/app/.env"))
@@ -167,6 +176,16 @@ def process_emails_batch(email, **context):
             "end_timestamp": end_timestamp.isoformat(),
         }
 
+        if num_errors > 0:
+            logger.warning(f"Validation errors found for {num_errors} emails")
+        elif num_errors == 0:
+            logger.info("No validation errors found")
+
+        update_last_read_timestamp(session, email, start_timestamp, end_timestamp)
+
+        # TODO: Add the threads logic here
+        # TODO: Add the retry for failed emails logic here
+
         # Push metrics to XCom
         context["ti"].xcom_push(key="email_processing_metrics", value=metrics)
 
@@ -257,12 +276,42 @@ def upload_raw_data_to_gcs(email, **context):
         logger.info("Finished upload_raw_data_to_gcs")
 
 
-def publish_metrics_task(**context):
+@with_email
+def publish_metrics_task(email, **context):
     """Publish metrics for the pipeline."""
     logger.info("Starting publish_metrics_task")
     try:
+        run_id = context["ti"].xcom_pull(key="run_id")
+        if not run_id:
+            raise ValueError("No run_id found in XCom")
+
+        metrics = context["ti"].xcom_pull(key="email_processing_metrics")
+        if not metrics:
+            raise ValueError("No metrics found in XCom")
+
+        session = get_db_session()
+
         # Add your metrics publishing logic here
-        return True
+        logger.info(f"Metrics for run_id {run_id}: {metrics}")
+        total_messages = metrics.get("total_messages_retrieved", 0)
+        emails_processed = metrics.get("emails_processed", 0)
+        emails_validated = metrics.get("emails_validated", 0)
+        validation_errors = metrics.get("validation_errors", 0)
+
+        # TODO: Add the threads logic here
+        add_preprocessing_summary(
+            session,
+            run_id,
+            email,
+            total_messages,
+            0,
+            emails_validated,
+            0,
+            validation_errors,
+            0,
+        )
+
+        session.close()
     except Exception as e:
         logger.error(f"Error in publish_metrics_task: {e}")
         raise
@@ -274,9 +323,52 @@ def validation_task(**context):
     """Perform data validation for the pipeline."""
     logger.info("Starting data_validation_task")
     try:
-        # Add your data validation logic here
-        # a = 1 / 0
-        return True
+        a = 1 / 0
+        metrics = context["ti"].xcom_pull(key="email_processing_metrics")
+        if not metrics:
+            raise ValueError("No metrics found in XCom")
+        upload_stats = context["ti"].xcom_pull(key="upload_stats")
+        if not upload_stats:
+            raise ValueError("No upload stats found in XCom")
+
+        # Extract validation metrics
+        emails_validated = metrics.get("emails_validated", 0)
+        validation_errors = metrics.get("validation_errors", 0)
+        total_messages = metrics.get("total_messages_retrieved", 0)
+        files_uploaded = (
+            upload_stats.get("files_uploaded", 0)
+            if isinstance(upload_stats, dict)
+            else upload_stats
+        )
+
+        # Perform validation checks
+        validation_results = {
+            "metrics_consistency": emails_validated + validation_errors
+            == total_messages,
+            "upload_completeness": files_uploaded == emails_validated,
+            "data_quality": (
+                validation_errors / total_messages < 0.1 if total_messages > 0 else True
+            ),
+        }
+
+        # Log validation results
+        for check, result in validation_results.items():
+            logger.info(
+                f"Validation check '{check}': {'PASSED' if result else 'FAILED'}"
+            )
+
+        # Push validation results to XCom
+        context["ti"].xcom_push(key="validation_results", value=validation_results)
+
+        # Determine overall validation status
+        validation_passed = all(validation_results.values())
+        if not validation_passed:
+            logger.warning("Data validation failed. See logs for details.")
+            raise ValueError("Data validation failed")
+        else:
+            logger.info("All data validation checks passed")
+
+        return validation_passed
     except Exception as e:
         logger.error(f"Error in data_validation_task: {e}")
         raise
@@ -298,13 +390,61 @@ def trigger_preprocessing_pipeline(**context):
 
 
 def send_failure_email(**context):
-    """Send a failure email in case of errors."""
+    """Send a basic failure email notification with run ID."""
     logger.info("Starting send_failure_email")
     try:
-        # Add your failure email logic here
+        # Get run_id and task information from context
+        run_id = context["ti"].xcom_pull(key="run_id") or "unknown_run_id"
+        task_instance = context.get("task_instance")
+        dag_id = task_instance.dag_id
+        task_id = task_instance.task_id
+
+        # Simple subject and body
+        subject = f"ALERT: Email Processing Failed - Run ID: {run_id}"
+        body = f"""
+        <h2>Email Processing Pipeline Failure</h2>
+        
+        <p><strong>Run ID:</strong> {run_id}<br>
+        <strong>DAG:</strong> {dag_id}<br>
+        <strong>Task:</strong> {task_id}</p>
+        
+        <p>The email processing pipeline has encountered an error.</p>
+        <p>Please check the Airflow logs for more details.</p>
+        """
+
+        # Get recipients from environment (could be either ALERT_EMAIL or AIRFLOW_ALERT_EMAIL)
+        recipients = os.getenv("ALERT_EMAIL") or os.getenv(
+            "AIRFLOW_ALERT_EMAIL", "pc612001@gmail.com"
+        ).split(",")
+        if isinstance(recipients, str):
+            recipients = recipients.split(",")
+
+        # Debug log about email configuration
+        logger.info(f"Email recipients: {', '.join(recipients)}")
+
+        smtp_host = conf.get("smtp", "smtp_host", fallback=None)
+        smtp_port = conf.get("smtp", "smtp_port", fallback=None)
+
+        if smtp_host and smtp_port:
+            logger.info(f"Sending email using SMTP server: {smtp_host}:{smtp_port}")
+        else:
+            # Try to get from environment variables directly
+            smtp_host = os.getenv("SMTP_HOST") or os.getenv("AIRFLOW__SMTP__SMTP_HOST")
+            smtp_port = os.getenv("SMTP_PORT") or os.getenv("AIRFLOW__SMTP__SMTP_PORT")
+            logger.info(
+                f"Using environment variables for SMTP: {smtp_host}:{smtp_port}"
+            )
+
+        send_email(
+            to=recipients,
+            subject=subject,
+            html_content=body,
+        )
+
+        logger.info(f"Sent failure notification for run_id {run_id}")
         return True
     except Exception as e:
-        logger.error(f"Error in send_failure_email: {e}")
-        raise
+        logger.error(f"Error sending failure email: {str(e)}")
+        return False
     finally:
         logger.info("Finished send_failure_email")

@@ -1,7 +1,6 @@
 import logging
 from datetime import timedelta
 
-from airflow import DAG
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import BranchPythonOperator, PythonOperator
 from airflow.utils.dates import days_ago
@@ -23,6 +22,8 @@ from utils.airflow_utils import (
     failure_callback,
     get_email_for_dag_run,
 )
+
+from airflow import DAG
 
 # Configure logging
 logging.basicConfig(
@@ -179,7 +180,7 @@ with DAG(
 
         # Task 9: Data Validation
         data_validation = PythonOperator(
-            task_id="data_validation",
+            task_id="validation_task",
             python_callable=validation_task,
             provide_context=True,
             doc="Performs data validation on the processed emails.",
