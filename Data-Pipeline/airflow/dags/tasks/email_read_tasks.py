@@ -203,16 +203,88 @@ def process_emails_batch(email, **context):
         logger.info("Finished process_emails_batch")
 
 
-def process_emails_minibatch(**context):
+@with_email
+def process_emails_minibatch(email, **context):
     """Process emails in mini-batch mode."""
     logger.info("Starting process_emails_minibatch")
+    run_id = generate_run_id(context)
+    session = get_db_session()
+
     try:
-        # Add your processing logic here
-        return True
+        credentials = authenticate_gmail(session, email)
+        gmail_service = GmailService(credentials)
+        start_timestamp, end_timestamp = get_timestamps(session, email)
+
+        # Calculate a 6-hour window from end_timestamp to ensure we get responses
+        extended_start = end_timestamp - timedelta(hours=6)
+        logger.info(
+            f"Using extended start time window: {extended_start} (original: {start_timestamp})"
+        )
+
+        # Fetch emails using the extended window
+        messages = fetch_emails(gmail_service, extended_start, end_timestamp)
+        logger.info(f"Retrieved {len(messages)} messages in 6-hour window")
+
+        # Retrieve data for all messages in extended window
+        emails_data = retrieve_email_data(gmail_service, messages)
+
+        # Filter emails to only include those within our actual time range
+        filtered_emails = []
+        for email_data in emails_data:
+            # Parse the internal date to compare with our real start_timestamp
+            email_date = datetime.fromtimestamp(
+                int(email_data.get("internalDate", 0)) / 1000, tz=timezone.utc
+            )
+            if email_date >= start_timestamp:
+                filtered_emails.append(email_data)
+
+        logger.info(
+            f"Filtered to {len(filtered_emails)} messages within actual time window"
+        )
+
+        # Process the filtered emails
+        validated_emails, num_errors = validate_emails(filtered_emails)
+        file_path = save_emails(email, run_id, validated_emails)
+
+        if file_path is None:
+            raise AirflowException("Failed to save emails locally")
+
+        # Create metrics dictionary
+        metrics = {
+            "total_messages_retrieved": len(messages),
+            "emails_in_timeframe": len(filtered_emails),
+            "emails_processed": len(filtered_emails),
+            "emails_validated": len(validated_emails),
+            "validation_errors": num_errors,
+            "processing_time": (
+                datetime.now(timezone.utc) - start_timestamp
+            ).total_seconds(),
+            "start_timestamp": start_timestamp.isoformat(),
+            "end_timestamp": end_timestamp.isoformat(),
+        }
+
+        if num_errors > 0:
+            logger.warning(f"Validation errors found for {num_errors} emails")
+        elif num_errors == 0:
+            logger.info("No validation errors found")
+
+        update_last_read_timestamp(session, email, start_timestamp, end_timestamp)
+
+        # Push metrics to XCom
+        context["ti"].xcom_push(key="email_processing_metrics", value=metrics)
+        context["ti"].xcom_push(key="run_id", value=run_id)
+
+        logger.info(
+            f"Successfully processed {len(validated_emails)} emails with {num_errors} validation errors"
+        )
+
+    except HttpError as e:
+        handle_http_error(e)
     except Exception as e:
-        logger.error(f"Error in process_emails_minibatch: {e}")
+        logger.error(f"An error occurred: {e}")
         raise
     finally:
+        session.close()
         logger.info("Finished process_emails_minibatch")
 
 
