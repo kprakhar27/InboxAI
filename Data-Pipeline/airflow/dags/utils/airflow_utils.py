@@ -33,6 +33,21 @@ def get_email_for_dag_run(**context):
         raise
 
 
+def get_user_id_for_dag_run(**context):
+    """
+    Get user_id from DAG run configuration
+    """
+    try:
+        user_id = context["dag_run"].conf.get("user_id")
+        if not user_id:
+            raise ValueError("No user_id provided in DAG run configuration")
+        context["task_instance"].xcom_push(key="user_id", value=user_id)
+        return user_id
+    except Exception as e:
+        logging.error(f"Error getting user_id from DAG run: {e}")
+        raise
+
+
 def create_db_session_task(**context):
     """
     Create a database session and store connection details in XCom.

@@ -1,6 +1,7 @@
 import logging
 from datetime import timedelta
 
+from airflow import DAG
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import BranchPythonOperator, PythonOperator
 from airflow.utils.dates import days_ago
@@ -23,8 +24,6 @@ from utils.airflow_utils import (
     get_email_for_dag_run,
 )
 
-from airflow import DAG
-
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -45,19 +44,17 @@ default_args = {
 
 with DAG(
     dag_id="email_processing_pipeline_v2",
-    schedule_interval="0 */6 * * *",
     default_args=default_args,
     description="Email Processing Pipeline: Fetches emails, processes them, and uploads data to GCS.",
     catchup=False,
-    max_active_runs=1,
+    max_active_runs=4,
     tags=["email", "processing", "pipeline"],
     params={
-        "email_address": "pc612001@gmail.com",  # Default email address
-        "batch_size": 100,  # Default batch size
+        "email_address": "pc612001@gmail.com",
     },
 ) as dag:
     """
-    ### Email Processing Pipeline (Improved)
+    ### Email Processing Pipeline
 
     This DAG performs the following steps:
     1. Fetches the email address from the DAG run configuration.
