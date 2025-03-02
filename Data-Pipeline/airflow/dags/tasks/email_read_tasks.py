@@ -1,4 +1,3 @@
-import csv
 import json
 import logging
 import os
@@ -7,24 +6,24 @@ from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 import pandas as pd
-from airflow.configuration import conf
 from airflow.exceptions import AirflowException
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
-from airflow.utils.email import send_email
 from auth.gmail_auth import GmailAuthenticator
 from dotenv import load_dotenv
-from googleapiclient.errors import HttpError
+from pydantic import ValidationError
 from services.gmail_service import GmailService
 from services.storage_service import StorageService
 from utils.airflow_utils import (
     authenticate_gmail,
     fetch_emails,
+    generate_email_content,
     generate_run_id,
     get_flow,
     get_timestamps,
     handle_http_error,
     retrieve_email_data,
     save_emails,
+    send_notification_email,
     validate_emails,
 )
 from utils.db_utils import (
@@ -334,6 +333,7 @@ def get_batch_data_from_trigger(**context):
         message_ids = conf["message_ids"]
         batch_number = conf["batch_number"]
         total_batches = conf["total_batches"]
+        user_id = conf.get("user_id")
 
         # Extract timestamps
         start_timestamp = conf.get("start_timestamp")
@@ -342,6 +342,7 @@ def get_batch_data_from_trigger(**context):
         # Create structured batch data
         batch_data = {
             "email": email,
+            "user_id": user_id,
             "message_ids": message_ids,
             "batch_number": batch_number,
             "total_batches": total_batches,
@@ -364,153 +365,102 @@ def get_batch_data_from_trigger(**context):
 
 
 def process_emails_batch(**context):
-    """Process emails in batch mode."""
+    """
+    Process a batch of emails from the batch_data XCom.
+    Validates emails using Pydantic models and saves them to storage.
+    """
     logger.info("Starting process_emails_batch")
-    run_id = generate_run_id(context)
-    session = get_db_session()
-    email = 1
+    session = None
 
     try:
-        credentials = authenticate_gmail(session, email)
-        gmail_service = GmailService(credentials)
-        start_timestamp, end_timestamp = get_timestamps(session, email)
-        messages = fetch_emails(gmail_service, start_timestamp, end_timestamp)
-        emails_data = retrieve_email_data(gmail_service, messages)
-        validated_emails, num_errors = validate_emails(emails_data)
-        file_path = save_emails(email, run_id, validated_emails)
+        # Get batch data from XCom
+        ti = context["task_instance"]
+        batch_data = ti.xcom_pull(key="batch_data")
 
-        if file_path is None:
-            raise AirflowException("Failed to save emails locally")
+        if not batch_data or not isinstance(batch_data, dict):
+            raise ValueError("Invalid or missing batch data from XCom")
 
-        # Create metrics dictionary
-        metrics = {
-            "total_messages_retrieved": len(messages),
-            "emails_processed": len(emails_data),
-            "emails_validated": len(validated_emails),
-            "validation_errors": num_errors,
-            "processing_time": (
-                datetime.now(timezone.utc) - start_timestamp
-            ).total_seconds(),
-            "start_timestamp": start_timestamp.isoformat(),
-            "end_timestamp": end_timestamp.isoformat(),
-        }
-
-        if num_errors > 0:
-            logger.warning(f"Validation errors found for {num_errors} emails")
-        elif num_errors == 0:
-            logger.info("No validation errors found")
-
-        update_last_read_timestamp(session, email, start_timestamp, end_timestamp)
-
-        # TODO: Add the threads logic here
-        # TODO: Add the retry for failed emails logic here
-
-        # Push metrics to XCom
-        context["ti"].xcom_push(key="email_processing_metrics", value=metrics)
+        # Extract data from batch
+        email_address = batch_data.get("email")
+        user_id = batch_data.get("user_id")
+        message_ids = batch_data.get("message_ids", [])
+        batch_number = batch_data.get("batch_number")
+        total_batches = batch_data.get("total_batches")
 
         logger.info(
-            f"Successfully processed {len(validated_emails)} emails with {num_errors} validation errors"
+            f"Processing batch {batch_number}/{total_batches} with {len(message_ids)} messages for {email_address}"
         )
 
-    except HttpError as e:
-        handle_http_error(e)
+        # Generate a run ID for this batch processing
+        run_id = generate_run_id()
+        ti.xcom_push(key="run_id", value=run_id)
+
+        # Set up services
+        session = get_db_session()
+        credentials = authenticate_gmail(session, email_address)
+        gmail_service = GmailService(credentials)
+
+        # Retrieve email data
+        emails_data = retrieve_email_data(gmail_service, message_ids)
+        logger.info(f"Retrieved {len(emails_data)} emails")
+
+        # Validate emails using Pydantic models
+        valid_emails, validation_errors = validate_emails(emails_data)
+        logger.info(
+            f"Validated emails: {len(valid_emails)} valid, {validation_errors} errors"
+        )
+
+        # Save validated emails to storage
+        saved_count = save_emails(valid_emails, email_address, run_id, user_id)
+        logger.info(f"Saved {saved_count} emails to storage")
+
+        # Collect metrics
+        metrics = {
+            "total_messages_retrieved": len(message_ids),
+            "emails_processed": len(emails_data),
+            "emails_validated": len(valid_emails),
+            "validation_errors": validation_errors,
+            "batch_number": batch_number,
+            "total_batches": total_batches,
+        }
+
+        # Update last read timestamp only if this is the last batch
+        if batch_number == total_batches:
+            end_timestamp = datetime.fromisoformat(batch_data.get("end_timestamp"))
+            update_last_read_timestamp(session, email_address, end_timestamp)
+            logger.info(f"Updated last read timestamp to {end_timestamp}")
+
+        # Push metrics to XCom
+        ti.xcom_push(key="email_processing_metrics", value=metrics)
+
+        return metrics
+
     except Exception as e:
-        logger.error(f"An error occurred: {e}")
+        logger.error(f"Error in process_emails_batch: {e}")
+        logger.error(traceback.format_exc())
         raise
     finally:
-        session.close()
+        if session:
+            session.close()
         logger.info("Finished process_emails_batch")
 
 
 def process_emails_minibatch(**context):
-    email = 1
-    """Process emails in mini-batch mode."""
-    logger.info("Starting process_emails_minibatch")
-    run_id = generate_run_id(context)
-    session = get_db_session()
-
     try:
-        credentials = authenticate_gmail(session, email)
-        gmail_service = GmailService(credentials)
-        start_timestamp, end_timestamp = get_timestamps(session, email)
-
-        # Calculate a 6-hour window from end_timestamp to ensure we get responses
-        extended_start = end_timestamp - timedelta(hours=6)
-        logger.info(
-            f"Using extended start time window: {extended_start} (original: {start_timestamp})"
-        )
-
-        # Fetch emails using the extended window
-        messages = fetch_emails(gmail_service, extended_start, end_timestamp)
-        logger.info(f"Retrieved {len(messages)} messages in 6-hour window")
-
-        # Retrieve data for all messages in extended window
-        emails_data = retrieve_email_data(gmail_service, messages)
-
-        # Filter emails to only include those within our actual time range
-        filtered_emails = []
-        for email_data in emails_data:
-            # Parse the internal date to compare with our real start_timestamp
-            email_date = datetime.fromtimestamp(
-                int(email_data.get("internalDate", 0)) / 1000, tz=timezone.utc
-            )
-            if email_date >= start_timestamp:
-                filtered_emails.append(email_data)
-
-        logger.info(
-            f"Filtered to {len(filtered_emails)} messages within actual time window"
-        )
-
-        # Process the filtered emails
-        validated_emails, num_errors = validate_emails(filtered_emails)
-        file_path = save_emails(email, run_id, validated_emails)
-
-        if file_path is None:
-            raise AirflowException("Failed to save emails locally")
-
-        # Create metrics dictionary
-        metrics = {
-            "total_messages_retrieved": len(messages),
-            "emails_in_timeframe": len(filtered_emails),
-            "emails_processed": len(filtered_emails),
-            "emails_validated": len(validated_emails),
-            "validation_errors": num_errors,
-            "processing_time": (
-                datetime.now(timezone.utc) - start_timestamp
-            ).total_seconds(),
-            "start_timestamp": start_timestamp.isoformat(),
-            "end_timestamp": end_timestamp.isoformat(),
-        }
-
-        if num_errors > 0:
-            logger.warning(f"Validation errors found for {num_errors} emails")
-        elif num_errors == 0:
-            logger.info("No validation errors found")
-
-        update_last_read_timestamp(session, email, start_timestamp, end_timestamp)
-
-        # Push metrics to XCom
-        context["ti"].xcom_push(key="email_processing_metrics", value=metrics)
-        context["ti"].xcom_push(key="run_id", value=run_id)
-
-        logger.info(
-            f"Successfully processed {len(validated_emails)} emails with {num_errors} validation errors"
-        )
-
-    except HttpError as e:
-        handle_http_error(e)
+        return True
     except Exception as e:
-        logger.error(f"An error occurred: {e}")
+        logger.error(f"Error in process_emails_batch: {e}")
         raise
     finally:
-        session.close()
-        logger.info("Finished process_emails_minibatch")
+        logger.info("Finished process_emails_batch")
 
 
 def upload_raw_data_to_gcs(**context):
-    email = 1
     """Upload raw email data to Google Cloud Storage."""
     logger.info("Starting upload_raw_data_to_gcs")
+
+    email = context["dag_run"].conf.get("email_address")
+    user_id = context["dag_run"].conf.get("user_id")
 
     try:
         # Get the run_id from XCom
@@ -522,7 +472,7 @@ def upload_raw_data_to_gcs(**context):
         storage_service = StorageService()
 
         # Get local directory where emails were saved
-        local_dir = storage_service.get_emails_dir(email, run_id)
+        local_dir = storage_service.get_emails_dir(email, run_id, user_id)
         if not os.path.exists(local_dir):
             raise FileNotFoundError(f"Directory not found: {local_dir}")
 
@@ -678,103 +628,6 @@ def trigger_preprocessing_pipeline(**context):
         raise
     finally:
         logger.info("Finished trigger_preprocessing_pipeline")
-
-
-def get_email_recipients():
-    """Get the list of email recipients from environment variables."""
-    recipients = os.getenv("ALERT_EMAIL") or os.getenv(
-        "AIRFLOW_ALERT_EMAIL", "pc612001@gmail.com"
-    ).split(",")
-    if isinstance(recipients, str):
-        recipients = recipients.split(",")
-    return recipients
-
-
-def get_smtp_config():
-    """Get SMTP configuration from Airflow config or environment variables."""
-    smtp_host = conf.get("smtp", "smtp_host", fallback=None)
-    smtp_port = conf.get("smtp", "smtp_port", fallback=None)
-
-    if not smtp_host or not smtp_port:
-        # Fallback to environment variables
-        smtp_host = os.getenv("SMTP_HOST") or os.getenv("AIRFLOW__SMTP__SMTP_HOST")
-        smtp_port = os.getenv("SMTP_PORT") or os.getenv("AIRFLOW__SMTP__SMTP_PORT")
-
-    return smtp_host, smtp_port
-
-
-def generate_email_content(context, type="failure"):
-    """Generate email subject and body based on context and notification type."""
-    # Get basic information
-    task_instance = context.get("task_instance")
-    dag_id = task_instance.dag_id
-    task_id = task_instance.task_id
-    run_id = context["ti"].xcom_pull(key="run_id") or "unknown_run_id"
-
-    # Default content
-    subject = f"ALERT: Pipeline {type.capitalize()} - {dag_id} - Run ID: {run_id}"
-    body = f"""
-    <h2>Pipeline {type.capitalize()} Notification</h2>
-    
-    <p><strong>Run ID:</strong> {run_id}<br>
-    <strong>DAG:</strong> {dag_id}<br>
-    <strong>Task:</strong> {task_id}</p>
-    
-    <p>The pipeline has {type}d.</p>
-    <p>Please check the Airflow logs for more details.</p>
-    """
-
-    # Customize based on DAG ID
-    if "email" in dag_id:
-        subject = f"ALERT: Email Processing {type.capitalize()} - Run ID: {run_id}"
-        body = f"""
-        <h2>Email Processing Pipeline {type.capitalize()}</h2>
-        
-        <p><strong>Run ID:</strong> {run_id}<br>
-        <strong>DAG:</strong> {dag_id}<br>
-        <strong>Task:</strong> {task_id}</p>
-        
-        <p>The email processing pipeline has {type}d.</p>
-        <p>Please check the Airflow logs for more details.</p>
-        """
-    elif "preprocessing" in dag_id:
-        subject = (
-            f"ALERT: Preprocessing Pipeline {type.capitalize()} - Run ID: {run_id}"
-        )
-        body = f"""
-        <h2>Data Preprocessing Pipeline {type.capitalize()}</h2>
-        
-        <p><strong>Run ID:</strong> {run_id}<br>
-        <strong>DAG:</strong> {dag_id}<br>
-        <strong>Task:</strong> {task_id}</p>
-        
-        <p>The data preprocessing pipeline has {type}d.</p>
-        <p>Please check the Airflow logs for more details.</p>
-        """
-
-    return subject, body
-
-
-def send_notification_email(subject, body, recipients=None):
-    """Send an email notification with the given subject and body."""
-    if recipients is None:
-        recipients = get_email_recipients()
-
-    logger.info(f"Email recipients: {', '.join(recipients)}")
-
-    smtp_host, smtp_port = get_smtp_config()
-    logger.info(f"SMTP configuration: {smtp_host}:{smtp_port}")
-
-    try:
-        send_email(
-            to=recipients,
-            subject=subject,
-            html_content=body,
-        )
-        return True
-    except Exception as e:
-        logger.error(f"Error sending email: {str(e)}")
-        return False
 
 
 def send_failure_email(**context):

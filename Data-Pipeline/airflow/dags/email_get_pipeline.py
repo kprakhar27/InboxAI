@@ -7,10 +7,8 @@ from airflow.operators.python import BranchPythonOperator, PythonOperator
 from airflow.utils.dates import days_ago
 from airflow.utils.task_group import TaskGroup
 from tasks.email_read_tasks import (
-    choose_processing_path,
     get_batch_data_from_trigger,
     process_emails_batch,
-    process_emails_minibatch,
     publish_metrics_task,
     send_failure_email,
     trigger_preprocessing_pipeline,

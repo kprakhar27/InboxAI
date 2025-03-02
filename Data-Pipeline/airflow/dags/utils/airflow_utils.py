@@ -6,10 +6,13 @@ import uuid
 from datetime import datetime, timezone
 
 import pandas as pd
+from airflow.configuration import conf
 from airflow.exceptions import AirflowException
+from airflow.utils.email import send_email
 from auth.gmail_auth import GmailAuthenticator
 from google.cloud import storage
 from google_auth_oauthlib.flow import Flow
+from googleapiclient.errors import HttpError
 from models_pydantic import EmailSchema
 from pydantic import ValidationError
 from services.storage_service import StorageService
@@ -86,9 +89,8 @@ def failure_callback(**context):
     logger.error(f"Task {context['task'].task_id} failed after retries.")
 
 
-def generate_run_id(context):
+def generate_run_id():
     run_id = str(uuid.uuid4())
-    context["ti"].xcom_push(key="run_id", value=run_id)
     logger.info(f"Generated run_id: {run_id}")
     return run_id
 
@@ -161,10 +163,8 @@ def validate_emails(emails_data):
     return validated_emails, num_errors
 
 
-def save_emails(email, run_id, validated_emails):
-    """Save emails in Parquet format (with JSON backup)."""
-    storage_service = StorageService()
-
+def save_emails(validated_emails, email, run_id, user_id):
+    """Save emails in Parquet format."""
     try:
         # Check if we have valid data to save
         if not validated_emails:
@@ -172,20 +172,12 @@ def save_emails(email, run_id, validated_emails):
             return None
 
         # Save as Parquet files for efficient processing
-        parquet_dir = save_emails_as_parquet(email, run_id, validated_emails)
+        parquet_dir = save_emails_as_parquet(email, run_id, validated_emails, user_id)
         if not parquet_dir or not os.path.exists(parquet_dir):
             logger.error(f"Failed to create parquet directory: {parquet_dir}")
             raise Exception("Failed to create parquet directory")
 
-        # Also save as JSON for backward compatibility
-        logger.info("Also saving emails in JSON format for compatibility")
-        json_path = storage_service.save_emails_locally(email, run_id, validated_emails)
-        if not json_path or not os.path.exists(os.path.dirname(json_path)):
-            logger.error(f"Failed to create JSON file: {json_path}")
-            raise Exception("Failed to create JSON file")
-
         logger.info(f"Emails saved in Parquet format at {parquet_dir}")
-        logger.info(f"Emails saved in JSON format at {json_path}")
 
         # Return the parquet directory as the main output
         return parquet_dir
@@ -205,29 +197,14 @@ def handle_http_error(e):
 
 
 # Add this function to save emails as Parquet files
-def save_emails_as_parquet(email_account, run_id, validated_emails, batch_size=50):
+def save_emails_as_parquet(email_account, run_id, validated_emails, user_id):
     """Save emails as multiple Parquet files for faster processing."""
     storage_service = StorageService()
     logger.info("Saving emails as Parquet files")
 
     # Create base directory
-    base_dir = storage_service.get_emails_dir(email_account, run_id)
+    base_dir = storage_service.get_emails_dir(email_account, run_id, user_id)
     logger.info(f"Using directory: {base_dir}")
-
-    # Create metadata file with summary
-    metadata = {
-        "email_account": email_account,
-        "run_id": run_id,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "total_emails": len(validated_emails),
-        "batch_size": batch_size,
-        "num_batches": (len(validated_emails) + batch_size - 1) // batch_size,
-    }
-
-    with open(os.path.join(base_dir, "metadata.json"), "w") as f:
-        json.dump(metadata, f, indent=2)
-
-    file_paths = []
 
     # Pre-process data to ensure it's Parquet compatible
     for email_data in validated_emails:
@@ -240,41 +217,114 @@ def save_emails_as_parquet(email_account, run_id, validated_emails, batch_size=5
         if "attachments" not in email_data or email_data["attachments"] is None:
             email_data["attachments"] = []
 
-    # Process in batches
-    for i in range(0, len(validated_emails), batch_size):
-        batch = validated_emails[i : i + batch_size]
-        batch_num = i // batch_size + 1
+    # Convert to DataFrame for Parquet
+    df = pd.DataFrame(validated_emails)
 
-        # Convert to DataFrame for Parquet
-        df = pd.DataFrame(batch)
+    # Save as a single Parquet file
+    parquet_path = os.path.join(base_dir, "emails.parquet")
+    df.to_parquet(parquet_path, index=False)
+    file_paths = [parquet_path]
 
-        # Save as Parquet file
-        parquet_path = os.path.join(base_dir, f"emails_batch_{batch_num:05d}.parquet")
-        df.to_parquet(parquet_path, index=False)
-        file_paths.append(parquet_path)
-
-        logger.info(
-            f"Saved batch {batch_num} with {len(batch)} emails to {parquet_path}"
-        )
-
-    # Save email index for quick lookup
-    index_data = []
-    for i, email_data in enumerate(validated_emails):
-        index_data.append(
-            {
-                "message_id": email_data["message_id"],
-                "from_email": email_data["from_email"],
-                "subject": email_data["subject"],
-                "date": email_data["date"],
-                "batch_num": (i // batch_size) + 1,
-            }
-        )
-
-    index_df = pd.DataFrame(index_data)
-    index_path = os.path.join(base_dir, "email_index.parquet")
-    index_df.to_parquet(index_path, index=False)
+    logger.info(f"Saved {len(validated_emails)} emails to {parquet_path}")
 
     logger.info(
         f"Saved {len(file_paths)} files with {len(validated_emails)} total emails"
     )
     return base_dir
+
+
+def get_email_recipients():
+    """Get the list of email recipients from environment variables."""
+    recipients = os.getenv("ALERT_EMAIL") or os.getenv(
+        "AIRFLOW_ALERT_EMAIL", "pc612001@gmail.com"
+    ).split(",")
+    if isinstance(recipients, str):
+        recipients = recipients.split(",")
+    return recipients
+
+
+def get_smtp_config():
+    """Get SMTP configuration from Airflow config or environment variables."""
+    smtp_host = conf.get("smtp", "smtp_host", fallback=None)
+    smtp_port = conf.get("smtp", "smtp_port", fallback=None)
+
+    if not smtp_host or not smtp_port:
+        # Fallback to environment variables
+        smtp_host = os.getenv("SMTP_HOST") or os.getenv("AIRFLOW__SMTP__SMTP_HOST")
+        smtp_port = os.getenv("SMTP_PORT") or os.getenv("AIRFLOW__SMTP__SMTP_PORT")
+
+    return smtp_host, smtp_port
+
+
+def generate_email_content(context, type="failure"):
+    """Generate email subject and body based on context and notification type."""
+    # Get basic information
+    task_instance = context.get("task_instance")
+    dag_id = task_instance.dag_id
+    task_id = task_instance.task_id
+    run_id = context["ti"].xcom_pull(key="run_id") or "unknown_run_id"
+
+    # Default content
+    subject = f"ALERT: Pipeline {type.capitalize()} - {dag_id} - Run ID: {run_id}"
+    body = f"""
+    <h2>Pipeline {type.capitalize()} Notification</h2>
+    
+    <p><strong>Run ID:</strong> {run_id}<br>
+    <strong>DAG:</strong> {dag_id}<br>
+    <strong>Task:</strong> {task_id}</p>
+    
+    <p>The pipeline has {type}d.</p>
+    <p>Please check the Airflow logs for more details.</p>
+    """
+
+    # Customize based on DAG ID
+    if "email" in dag_id:
+        subject = f"ALERT: Email Processing {type.capitalize()} - Run ID: {run_id}"
+        body = f"""
+        <h2>Email Processing Pipeline {type.capitalize()}</h2>
+        
+        <p><strong>Run ID:</strong> {run_id}<br>
+        <strong>DAG:</strong> {dag_id}<br>
+        <strong>Task:</strong> {task_id}</p>
+        
+        <p>The email processing pipeline has {type}d.</p>
+        <p>Please check the Airflow logs for more details.</p>
+        """
+    elif "preprocessing" in dag_id:
+        subject = (
+            f"ALERT: Preprocessing Pipeline {type.capitalize()} - Run ID: {run_id}"
+        )
+        body = f"""
+        <h2>Data Preprocessing Pipeline {type.capitalize()}</h2>
+        
+        <p><strong>Run ID:</strong> {run_id}<br>
+        <strong>DAG:</strong> {dag_id}<br>
+        <strong>Task:</strong> {task_id}</p>
+        
+        <p>The data preprocessing pipeline has {type}d.</p>
+        <p>Please check the Airflow logs for more details.</p>
+        """
+
+    return subject, body
+
+
+def send_notification_email(subject, body, recipients=None):
+    """Send an email notification with the given subject and body."""
+    if recipients is None:
+        recipients = get_email_recipients()
+
+    logger.info(f"Email recipients: {', '.join(recipients)}")
+
+    smtp_host, smtp_port = get_smtp_config()
+    logger.info(f"SMTP configuration: {smtp_host}:{smtp_port}")
+
+    try:
+        send_email(
+            to=recipients,
+            subject=subject,
+            html_content=body,
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Error sending email: {str(e)}")
+        return False

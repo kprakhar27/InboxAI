@@ -76,10 +76,10 @@ class StorageService:
             logging.error(f"Error saving processed thread {processed_thread_path}: {e}")
             return False
 
-    def get_emails_dir(self, email_account, run_id):
+    def get_emails_dir(self, email_account, run_id, user_id):
         """Get the directory path for storing email files."""
         base_dir = "/tmp/airflow/runs"
-        email_dir = f"{base_dir}/{email_account}/preprocessed/{run_id}"
+        email_dir = f"{base_dir}/raw/{user_id}/{email_account}/{run_id}"
 
         os.makedirs(email_dir, exist_ok=True)
         logging.info(f"Created directory: {email_dir}")
