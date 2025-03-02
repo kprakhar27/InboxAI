@@ -70,6 +70,7 @@ def process_emails():
             return jsonify({"message": "Email header is missing"}), 400
 
         pipeline = EmailPipeline(email, flow.client_config)
+
         result = pipeline.process_items_batch()
         email_total = result["emails"]["total"]
         email_saved = result["emails"]["successful"]
@@ -135,7 +136,6 @@ def preprocess_emails():
     except Exception as e:
         logging.error(f"Error preprocessing emails for user {user_id}: {str(e)}")
         return jsonify({"message": f"{user_id}: {str(e)}"}), 500
-
 
 @cron_bp.route("/trigger-email-read-dag", methods=["POST"])
 @jwt_required()
@@ -231,3 +231,4 @@ def trigger_dag():
     except Exception as e:
         logging.error(f"Error triggering DAG for user {user_id}: {str(e)}")
         return jsonify({"message": f"{str(e)}"}), 500
+

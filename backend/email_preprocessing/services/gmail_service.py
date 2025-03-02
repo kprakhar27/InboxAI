@@ -1,7 +1,7 @@
 import logging
-
 from googleapiclient.discovery import build
 from googleapiclient.http import BatchHttpRequest
+
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -39,6 +39,8 @@ class GmailService:
                         pageToken=page_token,
                         maxResults=maxResults,
                     )
+
+                    .list(userId="me", q=query, pageToken=page_token)
                     .execute()
                 )
                 messages.extend(results.get("messages", []))
@@ -75,8 +77,7 @@ class GmailService:
                         q=query,
                         pageToken=page_token,
                         maxResults=maxResults,
-                    )
-                    .execute()
+                    ).execute()
                 )
                 threads.extend(results.get("threads", []))
                 page_token = results.get("nextPageToken")
