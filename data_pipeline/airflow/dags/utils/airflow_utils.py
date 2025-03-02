@@ -328,3 +328,24 @@ def send_notification_email(subject, body, recipients=None):
     except Exception as e:
         logger.error(f"Error sending email: {str(e)}")
         return False
+
+
+# Function to decode Base64 URL-safe encoded strings
+def decode_base64_url_safe(encoded_str):
+    if pd.isnull(encoded_str):
+        return None
+
+    # Replace URL-safe characters
+    encoded_str = encoded_str.replace("-", "+").replace("_", "/")
+
+    # Add padding if necessary
+    padding = len(encoded_str) % 4
+    if padding:
+        encoded_str += "=" * (4 - padding)
+
+    try:
+        # Decode and return as UTF-8 string
+        return base64.b64decode(encoded_str).decode("utf-8", errors="ignore")
+    except Exception as e:
+        logger.error(f"Error decoding: {e}")
+        return None
