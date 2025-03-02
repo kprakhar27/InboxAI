@@ -1,14 +1,17 @@
 import logging
+import os
 from datetime import datetime
 from os.path import dirname, join
 
 import google
+import requests
 from dotenv import load_dotenv
 from email_preprocessing.pipelines.email_pipeline import EmailPipeline
 from email_preprocessing.pipelines.preprocessing_pipeline import PreprocessingPipeline
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from google.oauth2.credentials import Credentials
+from requests.auth import HTTPBasicAuth
 
 from .. import db
 from ..models import GoogleToken, Users
@@ -67,7 +70,8 @@ def process_emails():
             return jsonify({"message": "Email header is missing"}), 400
 
         pipeline = EmailPipeline(email, flow.client_config)
-        result = pipeline.process_items()
+
+        result = pipeline.process_items_batch()
         email_total = result["emails"]["total"]
         email_saved = result["emails"]["successful"]
         thread_total = result["threads"]["total"]
@@ -132,3 +136,99 @@ def preprocess_emails():
     except Exception as e:
         logging.error(f"Error preprocessing emails for user {user_id}: {str(e)}")
         return jsonify({"message": f"{user_id}: {str(e)}"}), 500
+
+@cron_bp.route("/trigger-email-read-dag", methods=["POST"])
+@jwt_required()
+def trigger_dag():
+    try:
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        email_address = data.get("email_address")
+
+        dag_id = "email_processing_pipeline_v2"
+
+        if not email_address:
+            logging.warning("email_address is missing")
+            return jsonify({"message": "email_address is missing"}), 400
+
+        # Use localhost:8080 since you're accessing from outside Docker
+        AIRFLOW_API_URL = os.environ.get(
+            "AIRFLOW_API_URL", "http://localhost:8080/api/v1"
+        )
+        AIRFLOW_USERNAME = os.environ.get("AIRFLOW_USERNAME", "airflow")
+        AIRFLOW_PASSWORD = os.environ.get("AIRFLOW_PASSWORD", "airflow")
+
+        # Log the API URL for debugging
+        logging.info(f"Using Airflow API URL: {AIRFLOW_API_URL}")
+
+        # Construct the full URL with the DAG ID
+        dag_trigger_url = f"{AIRFLOW_API_URL}/dags/{dag_id}/dagRuns"
+
+        payload = {"conf": {"email_address": email_address}}
+
+        logging.info(f"Triggering DAG at URL: {dag_trigger_url}")
+        logging.info(f"Payload: {payload}")
+
+        # Add timeout to prevent hanging
+        response = requests.post(
+            dag_trigger_url,
+            json=payload,
+            auth=HTTPBasicAuth(AIRFLOW_USERNAME, AIRFLOW_PASSWORD),
+            headers={"Content-Type": "application/json"},
+            timeout=10,  # Add timeout to prevent hanging
+        )
+
+        logging.info(f"Response status: {response.status_code}")
+        logging.info(f"Response body: {response.text}")
+
+        if response.status_code in [200, 201]:
+            logging.info(
+                f"DAG {dag_id} triggered successfully for user {user_id} with email {email_address}"
+            )
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "message": f"DAG {dag_id} triggered successfully",
+                        "run_id": run_id,
+                        "response": response.json() if response.text else {},
+                    }
+                ),
+                200,
+            )
+        else:
+            logging.error(
+                f"Failed to trigger DAG {dag_id} for user {user_id}: {response.text}"
+            )
+            return (
+                jsonify(
+                    {
+                        "message": f"Failed with status {response.status_code}: {response.text}"
+                    }
+                ),
+                500,
+            )
+    except requests.exceptions.ConnectionError as e:
+        logging.error(f"Connection error when trying to reach Airflow API: {e}")
+        return (
+            jsonify(
+                {
+                    "message": "Could not connect to Airflow API. Make sure Airflow is running and accessible."
+                }
+            ),
+            503,
+        )
+    except requests.exceptions.Timeout as e:
+        logging.error(f"Timeout error when trying to reach Airflow API: {e}")
+        return (
+            jsonify(
+                {
+                    "message": "Connection to Airflow API timed out. The service may be overloaded."
+                }
+            ),
+            504,
+        )
+    except Exception as e:
+        logging.error(f"Error triggering DAG for user {user_id}: {str(e)}")
+        return jsonify({"message": f"{str(e)}"}), 500
+

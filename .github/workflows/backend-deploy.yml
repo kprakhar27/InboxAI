@@ -1,13 +1,3 @@
-name: Deploy to Oracle Server
-
-on:
-  push:
-    branches: ["main"]
-    paths: ["backend/**"]
-  pull_request:
-    branches: ["main"]
-    paths: ["backend/**"]
-  workflow_dispatch:
 jobs:
   deploy:
     runs-on: self-hosted

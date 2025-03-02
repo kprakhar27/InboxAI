@@ -103,3 +103,106 @@ class StorageService:
         except Exception as e:
             logging.error(f"Error saving processed thread {processed_thread_path}: {e}")
             return False
+
+    def save_raw_emails_batch(self, email_address, email_data_dict):
+        """
+        Batch save raw emails to GCS
+        email_data_dict: Dictionary with msg_id as key and raw_msg as value
+        """
+        saved_paths = {}
+        now = datetime.now().strftime("%m%d%Yat%H%M")
+
+        try:
+            # Create batch operation
+            batch = self.client.batch()
+
+            for msg_id, raw_msg in email_data_dict.items():
+                blob_name = f"{os.environ.get('EMAIL_FOLDER')}/raw/{email_address}/{now}/{msg_id}.eml"
+                blob = self.bucket.blob(blob_name)
+
+                raw_email = base64.urlsafe_b64decode(raw_msg["raw"].encode("ASCII"))
+                blob.upload_from_string(raw_email, batch=batch)
+                saved_paths[msg_id] = blob_name
+
+            # Execute all operations in batch
+            batch.commit()
+
+            logging.info(
+                f"Batch saved {len(email_data_dict)} emails for {email_address}"
+            )
+            return saved_paths
+        except Exception as e:
+            logging.error(f"Error in batch saving emails: {e}")
+            return None
+
+    def save_raw_threads_batch(self, email_address, thread_data_dict):
+        """
+        Batch save raw threads to GCS
+        thread_data_dict: Dictionary with thread_id as key and thread_data as value
+        """
+        saved_paths = {}
+        now = datetime.now().strftime("%m%d%Yat%H%M")
+
+        try:
+            # Create batch operation
+            batch = self.client.batch()
+
+            for thread_id, thread_data in thread_data_dict.items():
+                blob_name = f"{os.environ.get('THREAD_FOLDER')}/raw/{email_address}/{now}/{thread_id}.json"
+                blob = self.bucket.blob(blob_name)
+
+                blob.upload_from_string(json.dumps(thread_data), batch=batch)
+                saved_paths[thread_id] = blob_name
+
+            # Execute all operations in batch
+            batch.commit()
+
+            logging.info(
+                f"Batch saved {len(thread_data_dict)} threads for {email_address}"
+            )
+            return saved_paths
+        except Exception as e:
+            logging.error(f"Error in batch saving threads: {e}")
+            return None
+
+    def get_raw_emails_batch(self, raw_email_paths):
+        """Fetch multiple raw emails from GCS in batch."""
+        emails = {}
+        try:
+            # Create batch operation
+            batch = self.client.batch()
+            blobs = [self.bucket.blob(path) for path in raw_email_paths]
+
+            for blob in blobs:
+                content = blob.download_as_string(batch=batch)
+                emails[blob.name] = content
+
+            # Execute all operations in batch
+            batch.commit()
+
+            logging.info(f"Batch fetched {len(raw_email_paths)} emails")
+            return emails
+        except Exception as e:
+            logging.error(f"Error in batch fetching emails: {e}")
+            return None
+
+    def get_raw_threads_batch(self, raw_thread_paths):
+        """Fetch multiple raw threads from GCS in batch."""
+        threads = {}
+        try:
+            # Create batch operation
+            batch = self.client.batch()
+            blobs = [self.bucket.blob(path) for path in raw_thread_paths]
+
+            for blob in blobs:
+                content = blob.download_as_string(batch=batch)
+                threads[blob.name] = content
+
+            # Execute all operations in batch
+            batch.commit()
+
+            logging.info(f"Batch fetched {len(raw_thread_paths)} threads")
+            return threads
+        except Exception as e:
+            logging.error(f"Error in batch fetching threads: {e}")
+            return None
