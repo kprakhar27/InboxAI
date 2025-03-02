@@ -6,13 +6,13 @@ from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
 from airflow.utils.dates import days_ago
 from airflow.utils.task_group import TaskGroup
-from tasks.email_read_tasks import (
+from tasks.email_batch_tasks import (
     check_gmail_oauth2_credentials,
     create_batches,
     get_last_read_timestamp_task,
-    send_failure_email,
     trigger_email_get_for_batches,
 )
+from tasks.email_fetch_tasks import send_failure_email
 from utils.airflow_utils import (
     create_db_session_task,
     failure_callback,
@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 
 default_args = {
     "owner": "airflow",
-    "start_date": days_ago(1),
     "depends_on_past": False,
     "email_on_failure": True,
     "email_on_retry": False,
@@ -39,15 +38,15 @@ default_args = {
 
 
 with DAG(
-    dag_id="email_fetch_pipeline",
+    dag_id="email_create_batch_pipeline",
     default_args=default_args,
     description="Email Fetch Pipeline: Fetches emails and creates batches for preprocessing.",
     catchup=False,
     max_active_runs=1,
     tags=["email", "fetch", "pipeline"],
     params={
-        "email_address": "pc612001@gmail.com",
-        "user_id": 1,
+        "email_address": "",
+        "user_id": "",
     },
 ) as dag:
     """
@@ -132,7 +131,7 @@ with DAG(
 
         # Task 7: Trigger Preprocessing Pipeline for Each Batch
         trigger_email_get_for_batches = PythonOperator(
-            task_id="trigger_email_get_for_batches",
+            task_id="trigger_email_fetch_pipeline",
             python_callable=trigger_email_get_for_batches,
             op_kwargs={"dag": dag},
             provide_context=True,
@@ -147,7 +146,7 @@ with DAG(
         task_id="send_failure_notification",
         python_callable=send_failure_email,
         provide_context=True,
-        trigger_rule="one_failed",  # Will trigger if at least one upstream task fails
+        trigger_rule="one_failed",
         doc="Sends a failure notification email if any task in the pipeline fails.",
     )
     logger.info("Send failure notification task initialized")

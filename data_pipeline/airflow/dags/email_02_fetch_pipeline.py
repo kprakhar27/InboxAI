@@ -6,11 +6,9 @@ from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import BranchPythonOperator, PythonOperator
 from airflow.utils.dates import days_ago
 from airflow.utils.task_group import TaskGroup
-from tasks.email_read_tasks import (
-    choose_processing_path,
+from tasks.email_fetch_tasks import (
     get_batch_data_from_trigger,
     process_emails_batch,
-    process_emails_minibatch,
     publish_metrics_task,
     send_failure_email,
     trigger_preprocessing_pipeline,
@@ -27,9 +25,7 @@ logger = logging.getLogger(__name__)
 
 default_args = {
     "owner": "airflow",
-    "start_date": days_ago(1),
     "depends_on_past": False,
-    "email": ["prad@inboxai.tech"],
     "email_on_failure": True,
     "email_on_retry": False,
     "retries": 3,
@@ -38,12 +34,12 @@ default_args = {
 }
 
 with DAG(
-    dag_id="email_get_pipeline",
+    dag_id="email_fetch_pipeline",
     default_args=default_args,
-    description="Email Get Pipeline: Processes batches of emails.",
+    description="Email Batch Pipeline: Processes batches of emails.",
     catchup=False,
     max_active_runs=4,
-    tags=["email", "get", "pipeline"],
+    tags=["email", "batch", "pipeline"],
 ) as dag:
     """
     ### Email Get Pipeline
@@ -127,6 +123,7 @@ with DAG(
         task_id="send_failure_email",
         python_callable=send_failure_email,
         provide_context=True,
+        trigger_rule="one_failed",
         doc="Sends a failure email if data validation fails.",
         dag=dag,
     )

@@ -1,0 +1,59 @@
+graph TD
+    subgraph email_create_batch_pipeline
+        start1[Start]
+        get_email_for_dag_run[Get Email from Dag Run]
+        get_user_id_for_dag_run[Get User ID for Email]
+        check_db_session[Create DB Session]
+        check_gmail_oauth2_credentials[Check Gmail OAuth2 Credentials]
+        get_last_read_timestamp_task[Get Last Read Timestamp]
+        fetch_emails_and_create_batches[Fetch Emails and Create Batches]
+        trigger_email_fetch_pipeline[Trigger Email Fetch Pipeline]
+        send_failure_notification[Send Failure Notification]
+
+        start1 --> setup_group
+        subgraph setup_group[Setup Group]
+            get_email_for_dag_run --> get_user_id_for_dag_run --> check_db_session
+        end
+        setup_group --> auth_prep_group
+        subgraph auth_prep_group[Auth and Prep Group]
+            check_gmail_oauth2_credentials --> get_last_read_timestamp_task
+        end
+        auth_prep_group --> email_listing_group
+        subgraph email_listing_group[Email Listing Group]
+            fetch_emails_and_create_batches --> trigger_email_fetch_pipeline
+        end
+        email_listing_group --> send_failure_notification
+    end
+
+    subgraph email_fetch_pipeline
+        start2[Start]
+        get_batch_data[Get Batch Data]
+        process_emails_batch[Process Emails in Batch Mode]
+        upload_raw_to_gcs[Upload Raw Data to GCS]
+        publish_metrics[Publish Metrics]
+        validation_task[Data Validation]
+        trigger_preprocessing_pipeline[Trigger Preprocessing Pipeline]
+        send_failure_email[Send Failure Email]
+
+        start2 --> get_batch_data --> process_emails_batch --> upload_raw_to_gcs
+        upload_raw_to_gcs --> publish_metrics
+        upload_raw_to_gcs --> validation_task
+        validation_task --> trigger_preprocessing_pipeline
+        validation_task --> send_failure_email
+    end
+
+    subgraph email_preprocessing_pipeline
+        start3[Start]
+        download_raw_data[Download Raw Data from GCS]
+        preprocess_emails[Preprocess Emails]
+        upload_processed_data[Upload Processed Data to GCS]
+        trigger_embedding_pipeline[Trigger Embedding Pipeline]
+        send_failure_email_preprocess[Send Failure Email]
+
+        start3 --> download_raw_data --> preprocess_emails --> upload_processed_data --> trigger_embedding_pipeline --> send_failure_email_preprocess
+    end
+
+    subgraph email_embedding_pipeline
+        start4[Start]
+        # Add tasks for the embedding pipeline here
+    end
