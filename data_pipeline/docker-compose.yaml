@@ -103,6 +103,8 @@ x-airflow-common: &airflow-common
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
   user: "${AIRFLOW_UID:-50000}:0"
+  networks:
+    - chroma_network
   depends_on: &airflow-common-depends-on
     redis:
       condition: service_healthy
@@ -124,6 +126,8 @@ services:
       retries: 5
       start_period: 5s
     restart: always
+    networks:
+      - chroma_network
 
   redis:
     # Redis is limited to 7.2-bookworm due to licencing change
@@ -138,6 +142,8 @@ services:
       retries: 50
       start_period: 30s
     restart: always
+    networks:
+      - chroma_network
 
   airflow-webserver:
     <<: *airflow-common
@@ -188,9 +194,6 @@ services:
       # Required to handle warm shutdown of the celery workers properly
       # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
       DUMB_INIT_SETSID: "0"
-    networks:
-      - chroma_network
-
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
@@ -314,6 +317,8 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+    networks:
+      - chroma_network
 
 volumes:
   postgres-db-volume:

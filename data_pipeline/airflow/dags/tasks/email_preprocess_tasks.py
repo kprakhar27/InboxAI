@@ -139,7 +139,8 @@ def upload_processed_to_gcs(**context):
         f"Successfully uploaded processed emails to gs://{bucket_name}/{object_name}"
     )
     # Push the GCS URI to XCom
-    context["ti"].xcom_push(key="processed_gcs_uri", value=gcs_uri)
+    uploaded_processed_gcs_uri = f"gs://{bucket_name}/{object_name}"
+    context['task_instance'].xcom_push(key="processed_gcs_uri", value=uploaded_processed_gcs_uri)
     return f"gs://{bucket_name}/{object_name}"
 
 
@@ -151,9 +152,11 @@ def trigger_embedding_pipeline(**context):
 
     try:
         # Get metadata from previous task
-        proceesed_gcs_uri = context["ti"].xcom_pull(
-            task_ids="upload_processed_to_gcs", key="processed_gcs_uri"
+        processed_gcs_uri = context['task_instance'].xcom_pull(
+            task_ids="upload_processed_data", key="processed_gcs_uri"
         )
+        
+        logging.info(f"Processed GCS URI: {processed_gcs_uri}")
 
         # Pass execution date to the triggered DAG
         execution_date = context.get("ds")
@@ -167,7 +170,7 @@ def trigger_embedding_pipeline(**context):
             trigger_dag_id="email_embedding_generation_pipeline",
             conf={
                 "execution_date": execution_date,
-                "proceesed_gcs_uri": proceesed_gcs_uri,
+                "processed_gcs_uri": processed_gcs_uri,
             },
             reset_dag_run=True,
             wait_for_completion=False,
