@@ -14,7 +14,14 @@ services:
       retries: 3
       start_period: 10s
 
+    networks:
+      - chroma_network
     restart: unless-stopped
 
 volumes:
   chroma_data:
+
+networks:
+  chroma_network:
+    name: chroma_network
+    external: true

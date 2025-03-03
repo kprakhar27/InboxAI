@@ -16,10 +16,6 @@ from tasks.email_preprocess_tasks import (
 # Initialize logging
 logger = logging.getLogger(__name__)
 
-# Configuration
-GCS_BUCKET = "{{ var.value.gcs_bucket }}"
-RAW_DATA_PATH = "raw/emails"
-PROCESSED_DATA_PATH = "processed/emails"
 LOCAL_TMP_DIR = "/tmp/inboxai_preprocessing"
 
 # Ensure the temporary directory exists
@@ -41,10 +37,9 @@ with DAG(
     dag_id="email_preprocessing_pipeline",
     default_args=default_args,
     description="Email preprocessing pipeline for embedding generation",
-    start_date=datetime(2023, 1, 1),
     catchup=False,
     max_active_runs=1,
-    tags=["email", "preprocessing", "embeddings"],
+    tags=["email", "preprocessing"],
 ) as dag:
 
     logger.info("Initializing email preprocessing pipeline DAG")
@@ -96,10 +91,6 @@ with DAG(
         ),
     )
 
-    # Task dependencies should be changed
-    # First define the main flow
-
-    # Set up main success path
     (
         start
         >> download_raw_data
