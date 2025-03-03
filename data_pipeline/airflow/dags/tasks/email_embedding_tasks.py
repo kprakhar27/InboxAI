@@ -2,7 +2,7 @@ import logging
 import os
 import traceback
 from typing import Optional
-
+from dotenv import load_dotenv
 import chromadb
 import numpy as np
 import openai
@@ -130,9 +130,11 @@ def upsert_embeddings(**context) -> bool:
         user_id = conf.get("user_id")
         client = get_chroma_client()
 
-        # Parse User ID from GCS URI
-        parts = gcs_uri.split("/")
-        user_id = parts[4]
+        # Parse User ID from GCS URI if not provided in config
+        if not user_id:
+            parts = gcs_uri.replace("gs://", "").split("/")
+            # Using index 4 to get 'user123' from gs://bucket_name/processed/data/user123/file.parquet
+            user_id = parts[4] if len(parts) > 4 else "default_user"
         
         logger.info(f"Upserting embeddings for user {user_id}")
 
