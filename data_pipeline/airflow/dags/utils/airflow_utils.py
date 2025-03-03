@@ -1,3 +1,4 @@
+import base64
 import csv
 import json
 import logging
@@ -265,11 +266,10 @@ def generate_email_content(context, type="failure"):
     run_id = context["ti"].xcom_pull(key="run_id") or "unknown_run_id"
 
     # Default content
-    subject = f"ALERT: Pipeline {type.capitalize()} - {dag_id} - Run ID: {run_id}"
+    subject = f"ALERT: Pipeline {type.capitalize()} - {dag_id}"
     body = f"""
     <h2>Pipeline {type.capitalize()} Notification</h2>
     
-    <p><strong>Run ID:</strong> {run_id}<br>
     <strong>DAG:</strong> {dag_id}<br>
     <strong>Task:</strong> {task_id}</p>
     

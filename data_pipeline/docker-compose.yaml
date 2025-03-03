@@ -188,6 +188,8 @@ services:
       # Required to handle warm shutdown of the celery workers properly
       # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
       DUMB_INIT_SETSID: "0"
+    networks:
+      - chroma_network
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
@@ -314,3 +316,8 @@ services:
 
 volumes:
   postgres-db-volume:
+
+networks:
+  chroma_network:
+    name: chroma_network
+    driver: bridge
