@@ -1,133 +1,110 @@
-# InboxAI Data Pipeline
+# Inbox AI Data Pipeline Overview
+
+This document provides an overview of the data pipeline and the steps to set up the necessary environment using Docker and environment variables.
 
 ## Overview
 
-The InboxAI Data Pipeline is a comprehensive ETL (Extract, Transform, Load) system built with Apache Airflow to process email data from Gmail. The pipeline handles authentication, email retrieval, preprocessing, and storage for downstream AI applications.
+The data pipeline fetches emails for a user and processes them in the following steps:
 
-## Key Components
+1. **Batching Emails**: The pipeline divides the fetched emails into batches of 50 emails each.
+2. **Fetching Emails**: It retrieves the emails from Gmail using the Gmail API.
+3. **Storing Emails**: The fetched emails are then written to Google Cloud Storage (GCS).
+4. **Preprocessing**: The emails stored in GCS are preprocessed to clean and prepare the data.
+5. **Creating Embeddings**: The preprocessed emails are converted into embeddings.
+6. **Storing Embeddings**: The embeddings are stored in a Vector Database for efficient retrieval and analysis.
 
-### DAGs (Directed Acyclic Graphs)
+Refer to the `vector_db` folder for more details on how the embeddings are managed and stored.
 
-1. **Email Fetch Pipeline (`email_fetch_pipeline.py`)**
+## Setup Steps
 
-   - Authenticates with Gmail API
-   - Lists available emails
-   - Creates batches for processing
+### Docker Setup
 
-2. **Email Get Pipeline (`email_get_pipeline.py`)**
+1. **Clone the Repository**: Clone the project repository from GitHub:
 
-   - Retrieves full email content
-   - Processes emails in batches
-   - Saves raw email data
-
-3. **Email Preprocessing Pipeline (`email_preprocessing_pipeline.py`)**
-   - Extracts text from HTML content
-   - Combines plain text and HTML content
-   - Redacts personally identifiable information (PII)
-   - Prepares data for embedding generation
-
-### Key Utilities
-
-1. **Gmail Authentication (`gmail_auth.py`)**
-
-   - Handles OAuth2 authentication
-   - Manages credentials and token refresh
-
-2. **Email Processing (`preprocessing_utils.py`)**
-
-   - Decodes Base64 URL-encoded content
-   - Extracts plain text from HTML
-   - Removes PII through regex patterns
-
-3. **Storage Service (`storage_service.py`)**
-   - Manages data persistence
-   - Handles file operations
-
-## Installation
-
-### Prerequisites
-
-- Python 3.9+
-- Docker and Docker Compose
-- Gmail API credentials
-
-### Setup
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/yourusername/InboxAI.git
-   cd InboxAI/data_pipeline
+   ```sh
+   git clone https://github.com/kprakhar27/InboxAI.git
+   cd your-repo
    ```
 
-2. Create a .env file with following details
+2. **Install Docker**: Ensure Docker is installed on your machine. You can download it from [Docker's official website](https://www.docker.com/get-started).
 
-3. Build and run with Docker Compose:
-   docker-compose build
-   docker-compose up -d
+3. **Run Docker Compose**: Build and start the Docker containers using Docker Compose:
 
-4. Access the Airflow UI at http://localhost:8080
+   ```sh
+   docker compose up --build -d
+   ```
 
-## Usage
+4. **Run Vector DB Docker**: Start the Vector Database Docker container to ensure it is up and running:
+   ```sh
+   docker compose -f vector_db/docker-compose.yml up --build -d
+   ```
 
-### Gmail Authentication
+### Environment Variables Setup
 
-1. Set up a project in the Google Cloud Console
-2. Enable the Gmail API
-3. Create OAuth2 credentials
-4. Add the credentials to the authentication system
+1. **Create `.env` File**: In the project root directory, create a `.env` file to store environment variables.
 
-### Running the Pipeline
+2. **Define Variables**: Add the necessary environment variables to the `.env` file. For example:
 
-1. Trigger the `email_fetch_pipeline` DAG with parameters:
+   ```sh
+   DB_NAME=<your_db_name>
+   DB_USER=<your_db_user>
+   DB_PASSWORD=<your_db_password>
+   DB_HOST=<your_db_host>
+   DB_PORT=<your_db_port>
+   SECRET_KEY=<your_secret_key>
+   JWT_SECRET_KEY=<your_jwt_secret_key>
+   REDIRECT_URI=<your_redirect_uri>
+   BUCKET_NAME=<your_bucket_name>
+   CREDENTIAL_PATH_FOR_GMAIL_API=<your_credential_path_for_gmail_api>
+   GOOGLE_APPLICATION_CREDENTIALS=<your_google_application_credentials>
+   _AIRFLOW_WWW_USER_USERNAME=<your_airflow_www_user_username>
+   _AIRFLOW_WWW_USER_PASSWORD=<your_airflow_www_user_password>
+   AIRFLOW_PROJ_DIR=<your_airflow_proj_dir>
+   AIRFLOW_UID=<your_airflow_uid>
+   AIRFLOW_GID=<your_airflow_gid>
+   AIRFLOW_DAGS_DIR=<your_airflow_dags_dir>
+   AIRFLOW_PLUGINS_DIR=<your_airflow_plugins_dir>
+   AIRFLOW_LOGS_DIR=<your_airflow_logs_dir>
+   AIRFLOW_DB_NAME=<your_airflow_db_name>
+   AIRFLOW_DB_USER=<your_airflow_db_user>
+   AIRFLOW_DB_PASSWORD=<your_airflow_db_password>
+   AIRFLOW__CELERY__RESULT_BACKEND=<your_airflow_celery_result_backend>
+   AIRFLOW__CELERY__BROKER_URL=<your_airflow_celery_broker_url>
+   AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=<your_airflow_database_sql_alchemy_conn>
+   AIRFLOW__SMTP__SMTP_HOST=<your_airflow_smtp_host>
+   AIRFLOW__SMTP__SMTP_PORT=<your_airflow_smtp_port>
+   AIRFLOW__SMTP__SMTP_USER=<your_airflow_smtp_user>
+   AIRFLOW__SMTP__SMTP_PASSWORD=<your_airflow_smtp_password>
+   AIRFLOW__SMTP__SMTP_MAIL_FROM=<your_airflow_smtp_mail_from>
+   AIRFLOW__SMTP__SMTP_STARTTLS=<your_airflow_smtp_starttls>
+   AIRFLOW__SMTP__SMTP_SSL=<your_airflow_smtp_ssl>
+   AIRFLOW_ALERT_EMAIL=<your_airflow_alert_email>
+   SMTP_HOST=<your_smtp_host>
+   SMTP_PORT=<your_smtp_port>
+   SMTP_USER=<your_smtp_user>
+   SMTP_PASSWORD=<your_smtp_password>
+   SMTP_MAIL_FROM=<your_smtp_mail_from>
+   SMTP_STARTTLS=<your_smtp_starttls>
+   SMTP_SSL=<your_smtp_ssl>
+   ALERT_EMAIL=<your_alert_email>
+   OPENAI_API_KEY=<your_openai_api_key>
+   CHROMA_HOST_URL=<your_chroma_host_url>
+   ```
 
-   - `email_address`: The email address to process
-   - `user_id`: User identifier in the system
+### Google Service Account and Gmail API Configuration
 
-2. Monitor the pipeline execution in the Airflow UI
+The configuration files for the Google Service Account and Gmail API should be placed inside the `data_pipeline/airflow/config` directory.
 
-3. Access processed data in the database or storage system
+1. **Google Service Account Configuration**: To configure the Google Service Account, follow the instructions provided in the [Google Cloud documentation](https://cloud.google.com/iam/docs/creating-managing-service-accounts).
 
-## Pipeline Details
+2. **Gmail API Configuration**: To set up the Gmail API, refer to the [Gmail API documentation](https://developers.google.com/gmail/api/quickstart/python).
 
-### Email Fetch Process
+By following these steps, you will have a fully functional data pipeline environment set up using Docker and environment variables.
 
-1. Authenticate with Gmail API
-2. List available emails
-3. Group emails into batches
-4. Trigger the processing pipeline for each batch
+### Accessing the Airflow UI
 
-### Email Processing
+To access the Airflow UI, follow these steps:
 
-1. Retrieve full email content for each batch
-2. Decode Base64 URL-encoded content
-3. Extract metadata (sender, recipient, date, etc.)
-4. Save raw email data
+**Open Airflow UI**: Open your web browser and navigate to `http://localhost:8080`. You should see the Airflow login page.
 
-### Preprocessing
-
-1. Extract plain text from HTML content
-2. Combine multiple text parts
-3. Redact PII (emails, phone numbers, etc.)
-4. Clean and normalize text
-5. Save processed data for embedding generation
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Authentication Errors**
-
-   - Check OAuth2 token validity
-   - Ensure proper scopes are configured
-
-2. **Rate Limiting**
-
-   - The pipeline includes retry mechanisms for API rate limits
-
-3. **Encoding Issues**
-   - The system handles various content encoding formats
-
-### Logs
-
-Logs are available in the Airflow UI or in the `logs/` directory within the container.
+Once logged in, you will have access to the Airflow UI where you can monitor and manage your data pipeline workflows.
