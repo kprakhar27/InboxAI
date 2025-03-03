@@ -51,7 +51,7 @@ class EmailPreprocessor:
 
     def _preprocess_chunk(self, df_chunk):
         """Preprocess a chunk of the DataFrame."""
-        required_columns = ["html_content", "plain_text", "subject"]
+        required_columns = ["html_decoded", "plain_text_decoded", "subject"]
         for col in required_columns:
             if col not in df_chunk.columns:
                 logger.warning(
@@ -60,13 +60,15 @@ class EmailPreprocessor:
                 df_chunk[col] = None
 
         # Extract plain text from HTML content
-        df_chunk["extracted_text"] = df_chunk["html_content"].apply(
+        df_chunk["extracted_text"] = df_chunk["html_decoded"].apply(
             self._extract_text_from_html
         )
 
         # Combine plain text and extracted text
         df_chunk["combined_text"] = df_chunk.apply(
-            lambda row: (row["plain_text"] if pd.notna(row["plain_text"]) else "")
+            lambda row: (
+                row["plain_text_decoded"] if pd.notna(row["plain_text_decoded"]) else ""
+            )
             + " "
             + (row["extracted_text"] if pd.notna(row["extracted_text"]) else ""),
             axis=1,

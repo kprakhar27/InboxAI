@@ -379,3 +379,17 @@ def send_failure_email(**context):
         return False
     finally:
         logger.info("Finished send_failure_email")
+
+def send_success_email(**context):
+    """Send a success email notification."""
+    logger.info("Starting send_success_email")
+    try:
+        subject, body = generate_email_content(context, type="success")
+        result = send_notification_email(subject, body)
+
+        return result
+    except Exception as e:
+        logger.error(f"Error in send_success_email: {str(e)}")
+        return False
+    finally:
+        logger.info("Finished send_success_email")
