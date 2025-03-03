@@ -369,13 +369,16 @@ def send_failure_email(**context):
         subject, body = generate_email_content(context, type="failure")
         result = send_notification_email(subject, body)
 
+        run_id = context["ti"].xcom_pull(key="run_id") or "unknown_run_id"
+        if result:
+            logger.info(f"Sent failure notification for run_id {run_id}")
+
         return result
     except Exception as e:
         logger.error(f"Error in send_failure_email: {str(e)}")
         return False
     finally:
         logger.info("Finished send_failure_email")
-
 
 def send_success_email(**context):
     """Send a success email notification."""

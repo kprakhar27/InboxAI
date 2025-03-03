@@ -1,3 +1,6 @@
+import { ConnectedState } from "@/components/HomeStates/ConnectedState";
+import { UnconnectedState } from "@/components/HomeStates/UnconnectedState";
+import { TopNav } from "@/components/TopNav";
 import { authService } from "@/services/authService";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -6,6 +9,7 @@ const Home = () => {
   const navigate = useNavigate();
   const [isValidating, setIsValidating] = useState(true);
   const token = localStorage.getItem("token");
+  const hasConnectedEmails = false; // TODO: Implement check for connected email clients
 
   useEffect(() => {
     const validateToken = async () => {
@@ -32,7 +36,12 @@ const Home = () => {
 
   if (!token || isValidating) return null;
 
-  return <div className="min-h-screen bg-background">Loggedin</div>;
+  return (
+    <div className="min-h-screen bg-background">
+      <TopNav />
+      {hasConnectedEmails ? <ConnectedState /> : <UnconnectedState />}
+    </div>
+  );
 };
 
 export default Home;

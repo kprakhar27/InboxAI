@@ -269,7 +269,6 @@ def generate_email_content(context, type="failure"):
     subject = f"ALERT: Pipeline {type.capitalize()} - {dag_id}"
     body = f"""
     <h2>Pipeline {type.capitalize()} Notification</h2>
-    
     <strong>DAG:</strong> {dag_id}<br>
     <strong>Task:</strong> {task_id}</p>
     

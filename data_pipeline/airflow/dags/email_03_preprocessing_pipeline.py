@@ -90,7 +90,7 @@ with DAG(
             f"Email preprocessing pipeline failed for date: {context['ds']}"
         ),
     )
-
+    
     (
         start
         >> download_raw_data

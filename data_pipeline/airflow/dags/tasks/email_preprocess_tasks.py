@@ -138,10 +138,8 @@ def upload_processed_to_gcs(**context):
     logger.info(
         f"Successfully uploaded processed emails to gs://{bucket_name}/{object_name}"
     )
-
     # Push the GCS URI to XCom
     context["ti"].xcom_push(key="processed_gcs_uri", value=gcs_uri)
-
     return f"gs://{bucket_name}/{object_name}"
 
 

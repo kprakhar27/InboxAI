@@ -190,6 +190,7 @@ services:
       DUMB_INIT_SETSID: "0"
     networks:
       - chroma_network
+
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
@@ -316,7 +317,6 @@ services:
 
 volumes:
   postgres-db-volume:
-
 networks:
   chroma_network:
     name: chroma_network
