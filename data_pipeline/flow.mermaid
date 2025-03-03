@@ -1,59 +1,37 @@
 graph TD
-    subgraph email_create_batch_pipeline
-        start1[Start]
-        get_email_for_dag_run[Get Email from Dag Run]
-        get_user_id_for_dag_run[Get User ID for Email]
-        check_db_session[Create DB Session]
-        check_gmail_oauth2_credentials[Check Gmail OAuth2 Credentials]
-        get_last_read_timestamp_task[Get Last Read Timestamp]
-        fetch_emails_and_create_batches[Fetch Emails and Create Batches]
-        trigger_email_fetch_pipeline[Trigger Email Fetch Pipeline]
-        send_failure_notification[Send Failure Notification]
-
-        start1 --> setup_group
-        subgraph setup_group[Setup Group]
-            get_email_for_dag_run --> get_user_id_for_dag_run --> check_db_session
-        end
-        setup_group --> auth_prep_group
-        subgraph auth_prep_group[Auth and Prep Group]
-            check_gmail_oauth2_credentials --> get_last_read_timestamp_task
-        end
-        auth_prep_group --> email_listing_group
-        subgraph email_listing_group[Email Listing Group]
-            fetch_emails_and_create_batches --> trigger_email_fetch_pipeline
-        end
-        email_listing_group --> send_failure_notification
+    subgraph Email_Create_Batch_Pipeline
+        A1(Start) --> A2(Get_Email_from_Dag_Run)
+        A2 --> A3(Get_User_ID_for_Email)
+        A3 --> A4(Create_DB_Session)
+        A4 --> A5(Check_Gmail_OAuth2_Credentials)
+        A5 --> A6(Get_Last_Read_Timestamp)
+        A6 --> A7(Fetch_Emails_and_Create_Batches)
+        A7 --> A8(Trigger_Email_Fetch_Pipeline)
+        A8 -->|Failure| A9(Send_Failure_Notification)
     end
 
-    subgraph email_fetch_pipeline
-        start2[Start]
-        get_batch_data[Get Batch Data]
-        process_emails_batch[Process Emails in Batch Mode]
-        upload_raw_to_gcs[Upload Raw Data to GCS]
-        publish_metrics[Publish Metrics]
-        validation_task[Data Validation]
-        trigger_preprocessing_pipeline[Trigger Preprocessing Pipeline]
-        send_failure_email[Send Failure Email]
-
-        start2 --> get_batch_data --> process_emails_batch --> upload_raw_to_gcs
-        upload_raw_to_gcs --> publish_metrics
-        upload_raw_to_gcs --> validation_task
-        validation_task --> trigger_preprocessing_pipeline
-        validation_task --> send_failure_email
+    subgraph Email_Fetch_Pipeline
+        B1(Start) --> B2(Get_Batch_Data)
+        B2 --> B3(Process_Emails_in_Batch_Mode)
+        B3 --> B4(Upload_Raw_Data_to_GCS)
+        B4 --> B5(Publish_Metrics)
+        B5 --> B6(Data_Validation)
+        B6 -->|Success| B7(Trigger_Preprocessing_Pipeline)
+        B6 -->|Failure| B8(Send_Failure_Email)
     end
 
-    subgraph email_preprocessing_pipeline
-        start3[Start]
-        download_raw_data[Download Raw Data from GCS]
-        preprocess_emails[Preprocess Emails]
-        upload_processed_data[Upload Processed Data to GCS]
-        trigger_embedding_pipeline[Trigger Embedding Pipeline]
-        send_failure_email_preprocess[Send Failure Email]
-
-        start3 --> download_raw_data --> preprocess_emails --> upload_processed_data --> trigger_embedding_pipeline --> send_failure_email_preprocess
+    subgraph Email_Preprocessing_Pipeline
+        C1(Start) --> C2(Download_Raw_Data_from_GCS)
+        C2 --> C3(Preprocess_Emails)
+        C3 --> C4(Upload_Processed_Data_to_GCS)
+        C4 --> C5(Trigger_Embedding_Pipeline)
+        C5 -->|Failure| C6(Send_Failure_Email)
     end
 
-    subgraph email_embedding_pipeline
-        start4[Start]
-        # Add tasks for the embedding pipeline here
+    subgraph Email_Embedding_Pipeline
+        D1(Start) --> D2(Download_Processed_Data_from_GCS)
+        D2 --> D3(Generate_Embeddings)
+        D3 --> D4(Upsert_Embeddings)
+        D4 -->|Success| D5(Send_Success_Email)
+        D4 -->|Failure| D6(Send_Failure_Email)
     end

@@ -9,6 +9,7 @@ This repository contains the Airflow pipeline structure for processing emails. T
 This DAG fetches emails and creates batches for preprocessing.
 
 - **Tasks:**
+
   - **Start:** Initializes the pipeline.
   - **Get Email from Dag Run:** Fetches the email address from the DAG run configuration.
   - **Get User ID for Email:** Gets the user ID from the DAG run configuration.
@@ -18,6 +19,8 @@ This DAG fetches emails and creates batches for preprocessing.
   - **Fetch Emails and Create Batches:** Fetches emails and creates batches of 50 emails.
   - **Trigger Email Fetch Pipeline:** Triggers the email fetch pipeline for each batch.
   - **Send Failure Notification:** Sends a failure notification email if any task in the pipeline fails.
+
+![Email Create Batch Pipeline](artifacts/email_01_create_batch.png)
 
 ### 2. Email Fetch Pipeline
 
@@ -33,29 +36,41 @@ This DAG processes batches of emails, uploads raw data to Google Cloud Storage, 
   - **Trigger Preprocessing Pipeline:** Triggers the preprocessing pipeline if data validation is successful.
   - **Send Failure Email:** Sends a failure email if data validation fails.
 
+![Email Fetch Pipeline](artifacts/email_02_fetch_pipeline.png)
+
 ### 3. Email Preprocessing Pipeline
 
 This DAG preprocesses emails, uploads processed data to Google Cloud Storage, and triggers the embedding pipeline.
 
 - **Tasks:**
+
   - **Start:** Initializes the pipeline.
   - **Download Raw Data from GCS:** Downloads raw email data from Google Cloud Storage.
-  - **Preprocess Emails:** Preprocesses the downloaded emails.
+  - **Preprocess Emails:** Preprocesses the downloaded emails to clean up the HTML and PII redacting.
   - **Upload Processed Data to GCS:** Uploads the processed email data to Google Cloud Storage.
   - **Trigger Embedding Pipeline:** Triggers the embedding generation pipeline if preprocessing is successful.
   - **Send Failure Email:** Sends a failure email if any task in the pipeline fails.
+
+![Email Preprocessing Pipeline](artifacts/email_03_preprocessing_pipeline.png)
 
 ### 4. Email Embedding Pipeline
 
 This DAG generates embeddings for the preprocessed emails.
 
 - **Tasks:**
+
   - **Start:** Initializes the pipeline.
   - **Download Processed Data from GCS:** Downloads processed email data from Google Cloud Storage.
   - **Generate Embeddings:** Generates embeddings for the downloaded emails.
   - **Upsert Embeddings:** Upserts the generated embeddings to the Chroma Vector Database.
   - **Send Success Email:** Sends a success email if all tasks in the pipeline succeed.
   - **Send Failure Email:** Sends a failure email if any task in the pipeline fails.
+
+![Email Embedding Pipeline](artifacts/email_04_embedding_pipeline.png)
+
+## Visualizing the Pipeline
+
+For a better understanding of the pipeline flow, refer to the `flow.mermaid` file. This file contains a visual representation of the entire email processing workflow using Mermaid.js.
 
 ## File Structure
 
@@ -90,3 +105,53 @@ airflow/
         ├── db_utils.py                     # Database interaction utilities
         └── preprocessing_utils.py          # Email preprocessing utilities
 ```
+
+### Modular Syntax and Code
+
+- Each pipeline component is implemented as an independent module
+- Functions and classes follow single responsibility principle
+- Common utilities are centralized in the `utils` directory
+- Code reuse across DAGs is maximized through abstraction
+
+### Pipeline Orchestration
+
+- Airflow DAGs with clear dependency chains
+- Dynamic task generation based on data volume
+- Cross-DAG dependencies managed through TriggerDagRunOperator
+
+### Tracking and Logging
+
+- Comprehensive logging at all pipeline stages
+- Custom logger formatting with task context
+
+### Data Version Control
+
+- Raw email data versioned in GCS with timestamped directories
+- Processed data versions maintained with clear lineage
+- Metadata tracking for each processing stage
+- Configuration files versioned in Git
+
+### Pipeline Flow Optimization
+
+- The pipeline is broken into chunks of 50 emails
+- The pipelines which are not dependent on API calls are all parallelized.
+
+### Schema and Statistics Generation
+
+- Data validation with Pydantic models
+- Statistical analysis of email corpus characteristics
+- Data quality validation at each pipeline stage
+- Configuration validation for pipeline parameters
+
+![Email Processing Summary](artifacts/email_metrics.png)
+
+### Anomaly Detection and Alert Generation
+
+- Outlier detection for email processing metrics
+- Alerts for processing failures or timeout issues through Email.
+- Data quality checks to validate content extraction
+
+### Testing
+
+- Unit tests for core utility functions
+- Mock services for Gmail and GCS testing

@@ -23,7 +23,7 @@ Refer to the `vector_db` folder for more details on how the embeddings are manag
 
    ```sh
    git clone https://github.com/kprakhar27/InboxAI.git
-   cd your-repo
+   cd data_pipeline
    ```
 
 2. **Install Docker**: Ensure Docker is installed on your machine. You can download it from [Docker's official website](https://www.docker.com/get-started).
@@ -44,6 +44,7 @@ Refer to the `vector_db` folder for more details on how the embeddings are manag
 1. **Create `.env` File**: In the project root directory, create a `.env` file to store environment variables.
 
 2. **Define Variables**: Add the necessary environment variables to the `.env` file. For example:
+   The environment file contains numerous values that may require refactoring due to the current setup of our backend and PostgreSQL. If you need API keys or service account tokens, please contact Pradnyesh at <choudhari.pra@northeastern.edu> to obtain the necessary credentials.
 
    ```sh
    DB_NAME=<your_db_name>
