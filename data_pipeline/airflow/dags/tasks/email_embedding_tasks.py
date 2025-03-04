@@ -2,24 +2,28 @@ import logging
 import os
 import traceback
 from typing import Optional
-from dotenv import load_dotenv
+
 import chromadb
 import numpy as np
 import openai
 import pandas as pd
 from chromadb.config import Settings
+from dotenv import load_dotenv
 from google.cloud import storage
 
 # Initialize logging
 logger = logging.getLogger(__name__)
-load_dotenv(os.path.join(os.path.dirname(__file__), "/app/.env"))
+load_dotenv()
 LOCAL_TMP_DIR = "/tmp/email_embeddings"
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+
 def get_chroma_client():
     try:
-        chroma_client = chromadb.HttpClient(host=os.getenv("CHROMA_HOST_URL"), port=8000)
+        chroma_client = chromadb.HttpClient(
+            host=os.getenv("CHROMA_HOST_URL"), port=8000
+        )
         logger.info("Successfully connected to Chroma client.")
         return chroma_client
     except Exception as e:
@@ -91,18 +95,26 @@ def generate_embeddings(**context):
     try:
         local_file_path = context["ti"].xcom_pull(key="local_file_path")
         execution_date = context["ds"]
-        embedded_data_path = f"{LOCAL_TMP_DIR}/processed_emails_{execution_date}.parquet"
+        embedded_data_path = (
+            f"{LOCAL_TMP_DIR}/processed_emails_{execution_date}.parquet"
+        )
         df = pd.read_parquet(local_file_path)
         df["labels"] = df["labels"].astype(str)
         # using apply function to create a new column
         df["metadata"] = df.apply(
-            lambda row: {"from": row.from_email, "date": row.date, "labels": row.labels},
+            lambda row: {
+                "from": row.from_email,
+                "date": row.date,
+                "labels": row.labels,
+            },
             axis=1,
         )
         df["embeddings"] = df.apply(
             lambda row: openai.embeddings.create(
                 input=row.redacted_text, model="text-embedding-3-small"
-            ).data[0].embedding,
+            )
+            .data[0]
+            .embedding,
             axis=1,
         )
 
@@ -135,7 +147,7 @@ def upsert_embeddings(**context) -> bool:
             parts = gcs_uri.replace("gs://", "").split("/")
             # Using index 4 to get 'user123' from gs://bucket_name/processed/data/user123/file.parquet
             user_id = parts[4] if len(parts) > 4 else "default_user"
-        
+
         logger.info(f"Upserting embeddings for user {user_id}")
 
         upload_to_chroma(user_id, embedded_data_path, client)
