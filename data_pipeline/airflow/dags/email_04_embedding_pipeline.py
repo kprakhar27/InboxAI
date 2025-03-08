@@ -64,7 +64,7 @@ with DAG(
     )
 
     # Task 4: Upsert embeddings to Chroma Vector Database
-    upsert_embeddings = PythonOperator(
+    upsert_embedding = PythonOperator(
         task_id="upsert_embeddings",
         python_callable=upsert_embeddings,
         provide_context=True,
@@ -95,5 +95,4 @@ with DAG(
     )
 
     # Define dependencies
-    start >> download_processed_data >> generate_embeddings_task >> upsert_embeddings
-    upsert_embeddings >> send_success >> send_failure
+    start >> download_processed_data >> generate_embeddings_task >> upsert_embedding >> send_success >> send_failure

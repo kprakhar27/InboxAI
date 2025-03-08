@@ -44,10 +44,6 @@ with DAG(
     catchup=False,
     max_active_runs=1,
     tags=["email", "fetch", "pipeline"],
-    params={
-        "email_address": "",
-        "user_id": "",
-    },
 ) as dag:
     """
     ### Email Fetch Pipeline

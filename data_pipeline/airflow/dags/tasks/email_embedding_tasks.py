@@ -1,19 +1,16 @@
 import logging
 import os
-import traceback
-from typing import Optional
-
+import re
 import chromadb
 import numpy as np
 import openai
 import pandas as pd
-from chromadb.config import Settings
 from dotenv import load_dotenv
 from google.cloud import storage
 
 # Initialize logging
 logger = logging.getLogger(__name__)
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), "/app/.env"))
 LOCAL_TMP_DIR = "/tmp/email_embeddings"
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -89,7 +86,10 @@ def download_processed_from_gcs(**context):
     except Exception as e:
         logger.error(f"Error downloading processed data from GCS: {e}")
         raise
-
+    
+def extract_email(email):
+    match = re.search(r'[\w\.-]+@[\w\.-]+', email)
+    return match.group(0) if match else None
 
 def generate_embeddings(**context):
     try:
@@ -103,9 +103,10 @@ def generate_embeddings(**context):
         # using apply function to create a new column
         df["metadata"] = df.apply(
             lambda row: {
-                "from": row.from_email,
+                "from": extract_email(row.from_email),
                 "date": row.date,
                 "labels": row.labels,
+                "to": extract_email(row.to[0])
             },
             axis=1,
         )
