@@ -14,8 +14,8 @@ def automate_data_pipeline(**context):
     try:
         logger.info("connecting to Database....")
         session=get_db_session()
-        results=session.execute("select * from users")
-        users=[[str(result[0]),result[1]] for result in results]
+        results=session.execute("select * from google_tokens")
+        users=[[str(result[1]),result[2]] for result in results]
         logger.info("Retrived users from DB")
         session.close()
         logger.info("Initialzing Trigger for data pipeline")

@@ -93,13 +93,13 @@ def delete_from_postgres(**context):
         session=get_db_session()
          # Attempt to execute the DELETE query
         query = text("""
-            DELETE FROM users WHERE id = :id AND username = :username
+            DELETE FROM google_tokens WHERE user_id = :id AND email = :email
         """)
 
         # Execute the DELETE query
         result = session.execute(query, {
             "id": user_id,  # UUID as string
-            "username": email_id
+            "email": email_id
         })
 
         # Commit the transaction
