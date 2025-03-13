@@ -72,7 +72,7 @@ def delete_embeddings(**context):
         else:
             logger.error("Collection not found")
             raise Exception("Collection not found")
-        results = collection.get(where={"email_id": email_id})
+        results = collection.get(where={"to": email_id})
         document_ids = results["ids"]
         if document_ids:
         # Delete documents by IDs
