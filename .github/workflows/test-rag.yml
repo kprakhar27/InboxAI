@@ -23,7 +23,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Create VENV
-        run: python3 -m virtualenv rag/venv
+        run: python3 -m venv rag/venv
       - name: Activate VENV
         run: source rag/venv/bin/activate
       - name: Install Packages
