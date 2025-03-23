@@ -2,34 +2,30 @@
 
 ## Overview
 
-This repository contains various implementations of Retrieval-Augmented Generation (RAG) pipelines, including Conditional RAG (CRAG) and Hybrid RAG pipelines. These pipelines are designed to evaluate the performance of RAG systems and log the results to an MLflow server for tracking and analysis.
+This folder contains various implementations of Retrieval-Augmented Generation (RAG) pipelines, including Simple RAG, Conditional RAG (CRAG) and Hybrid RAG pipelines. These pipelines are designed to evaluate the performance of RAG systems and log the results to an MLflow server for tracking and analysis.
 
 ## Folder Structure
 
 ```
-.env
-CRAGPipeline.py
-HybridRAGPipeline.py
-models.py
-qa_data_mini.json
-rag_evaluator.py
-RAGConfig.py
-RAGEvaluator.py
-RAGPipeline.py
-README.md
-__pycache__/
+Directory structure:
+└── rag/
+    ├── CRAGPipeline.py
+    ├── HybridRAGPipeline.py
+    ├── RAGConfig.py
+    ├── RAGEvaluator.py
+    ├── RAGPipeline.py
+    ├── rag_evaluator.py
+    ├── synthetic_email_generator.py
+    └── README.md
 ```
 
-### Key Files
-
+- **RAGPipeline.py**: Contains the implementation of the Simple RAG (CRAG) pipeline with MLflow integration.
 - **CRAGPipeline.py**: Contains the implementation of the Conditional RAG (CRAG) pipeline with MLflow integration.
 - **HybridRAGPipeline.py**: Contains the implementation of the Hybrid RAG pipeline with MLflow integration.
-- **models.py**: Defines the models used in the pipelines.
-- **qa_data_mini.json**: A sample dataset used for testing the pipelines.
 - **rag_evaluator.py**: Script to initialize and run evaluations on the RAG pipelines.
 - **RAGConfig.py**: Configuration file for the RAG pipelines.
 - **RAGEvaluator.py**: Contains the `RAGEvaluator` class, which evaluates the performance of the RAG pipelines and logs the results to MLflow.
-- **RAGPipeline.py**: Base class for the RAG pipeline.
+- **synthetic_email_generator.py**: Code used to generate synthetic emails which will be used for evaluation and bias detection.
 
 ## Getting Started
 
@@ -56,23 +52,32 @@ __pycache__/
     MLFLOW_TRACKING_URI=<your_mlflow_tracking_uri>
     MLFLOW_USERNAME=<your_mlflow_username>
     MLFLOW_PASSWORD=<your_mlflow_password>
+    OPENAI_API_KEY=<your_openai_api_key>
+    TEST_DATASET_PATH=<path_to_test_dataset>
+    EMBEDDING_MODEL=text-embedding-3-small
+    LLM_MODEL=<gpt_model>
+    TOP_K=<k>
+    TEMPERATURE=<temp>
+    CHROMA_COLLECTION=test   # for general testing purpose, details below
+    CHROMA_HOST=<chroma_host>
+    CHROMA_PORT=<chroma_port>
     ```
 
 ### Running Evaluations
 
 1. **CRAG Pipeline Evaluation**:
     ```sh
-    python CRAGPipeline.py
+    python rag_evaluator.py CRAGPipeline `experiment_name`
     ```
 
 2. **Hybrid RAG Pipeline Evaluation**:
     ```sh
-    python HybridRAGPipeline.py
+    python rag_evaluator.py HybridRAGPipeline `experiment_name`
     ```
 
 3. **General RAG Evaluation**:
     ```sh
-    python rag_evaluator.py
+    python rag_evaluator.py RAGPipeline `experiment_name`
     ```
 
 ### Logging Results
@@ -106,14 +111,41 @@ The results of the evaluations are logged to the MLflow server specified in the 
 - **generate_response(query: str, context: List[str]) -> str**: Generates a response using the RAG chain.
 - **query(query: str) -> Dict[str, Any]**: Completes the RAG pipeline with metadata for evaluation.
 
-## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+## Test Dataset Generation
 
-## Acknowledgements
+The test dataset was generated using a combination of generative AI models and synthetic data techniques:
 
-- OpenAI for the API
-- MLflow for the tracking server
-- ChromaDB for the document retrieval
+1. **Initial Generation**: We used OpenAI's GPT-4 to generate a diverse set of professional emails across multiple categories including:
+    - Meeting Invitations
+    - Project Updates
+    - Financial Reports
+    - Customer Support
+    - Marketing Campaigns
+    - Sales Pitches
+    - Technical Documentation
+    - Event Invitations
+    - Security Alerts
 
-For more information, please refer to the individual files and their respective docstrings.
+2. **Metadata Enrichment**: Each email was enriched with realistic metadata using the Faker library:
+    - Sender and recipient information
+    - Timestamps
+    - Company names
+    - Email addresses
+    - CC/BCC fields
+
+3. **Industry Diversity**: Emails were distributed across various industries:
+    - Technology
+    - Finance
+    - Healthcare
+    - Education
+    - Retail
+    - Government
+
+4. **Controlled Toxicity**: A small percentage (~5%) of emails were intentionally injected with toxic content using predefined keywords to test content filtering capabilities.
+
+5. **Format Standardization**: All emails were formatted in a consistent JSON structure with metadata, content, and analytics fields to facilitate processing and evaluation.
+
+The final dataset comprises hundreds of realistic email examples that serve as a robust foundation for testing and evaluating our RAG systems.
+
+These categories can be used to detect the bias in the output generation process.
