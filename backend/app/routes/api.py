@@ -4,6 +4,7 @@ from os.path import dirname, join
 
 from dotenv import load_dotenv
 from flask import Blueprint, jsonify, request
+from flask import redirect
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from googleapiclient.discovery import build
 from sqlalchemy import text
@@ -23,6 +24,14 @@ else:
     os.environ.pop("OAUTHLIB_INSECURE_TRANSPORT", None)
 
 flow = get_flow()
+
+@api_bp.route("/redirect", methods=["GET","POST"])
+def redirect_url():
+    params = request.args.to_dict()
+    params["api_url"] = request.base_url
+    url = "https://inboxai.tech/#/redirect?" + "&".join([f"{k}={v}" for k, v in params.items()])
+    print({"params": params, "url":url})
+    return redirect(url, code=301)
 
 
 @api_bp.route("/addprofile", methods=["POST"])
