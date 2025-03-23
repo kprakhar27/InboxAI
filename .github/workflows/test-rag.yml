@@ -1,0 +1,75 @@
+name: Deploy to Oracle Server
+
+on:
+  workflow_dispatch:
+    inputs:
+      RAGPipeline:
+        description: 'RAG to Evaluate'
+        required: true
+        default: 'RAGPipeline'
+        type: string
+      ExperimentName:
+        description: 'Experiment Name'
+        required: true
+        default: 'rag_evaluation'
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Create VENV
+        run: python3 -m virtualenv venv
+      - name: Activate VENV
+        run: source backend/flaskenv/bin/activate
+      - name: Install Packages
+        run: $(pwd)/backend/flaskenv/bin/pip3 install -r backend/requirements.txt
+      - name: Create dynamic credentials.json file
+        id: create-json-1
+        uses: jsdaniell/create-json@v1.2.3
+        with:
+          name: "credentials.json"
+          json: ${{ secrets.GOOGLE_CREDENTIALS }}
+          dir: "backend/"
+      - name: Create dynamic google_service_account.json file
+        id: create-json-2
+        uses: jsdaniell/create-json@v1.2.3
+        with:
+          name: "google_sa.json"
+          json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          dir: "backend/"
+      - name: Create .env file
+        run: |
+          touch backend/.env
+          echo DB_USER=${{ secrets.DB_USER }} >> backend/.env
+          echo DB_PASSWORD=${{ secrets.DB_PASSWORD }} >> backend/.env
+          echo DB_HOST=${{ secrets.HOST }} >> backend/.env
+          echo DB_PORT=${{ secrets.DB_PORT }} >> backend/.env
+          echo DB_NAME=${{ secrets.DB_NAME }} >> backend/.env
+          echo SECRET_KEY=${{ secrets.SECRET_KEY }} >> backend/.env
+          echo JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }} >> backend/.env
+          echo REDIRECT_URI=${{ secrets.REDIRECT_URI }} >> backend/.env
+          echo BUCKET_NAME=${{ secrets.BUCKET_NAME }} >> backend/.env
+          echo EMAIL_FOLDER=emails >> backend/.env
+          echo THREAD_FOLDER=threads >> backend/.env
+          echo CREDENTIAL_PATH_FOR_GMAIL_API=credentials.json >> backend/.env
+          echo GOOGLE_APPLICATION_CREDENTIALS=google_sa.json >> backend/.env
+          cat backend/.env
+      - name: Chmod wsgi Script
+        run: sudo chmod +x backend/add-ini-wsgi-conf.sh
+      - name: Run wsgi Script
+        run: sudo ./backend/add-ini-wsgi-conf.sh flask.ini flask.sock
+      - name: Chmod Service Script
+        run: sudo chmod +x backend/add-service.sh
+      - name: Run Service Script
+        run: sudo ./backend/add-service.sh inboxai-backend $USER flaskenv flask.ini
+      - name: Chmod Nginx Script
+        run: sudo chmod +x backend/add-nginx-wsgi-conf.sh
+      - name: Run Nginx Script
+        run: sudo ./backend/add-nginx-wsgi-conf.sh inboxai-backend flask.sock
+      - name: Success
+        run: echo "Deploy Success"
