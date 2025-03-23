@@ -4,15 +4,13 @@ from datetime import timedelta
 from airflow import DAG
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
-from tasks.email_fetch_tasks import send_failure_email
 from tasks.data_delete_task import (
     delete_embeddings,
     delete_from_gcp,
-    delete_from_postgres
+    delete_from_postgres,
 )
-from utils.airflow_utils import (
-    failure_callback
-)
+from tasks.email_fetch_tasks import send_failure_email
+from utils.airflow_utils import failure_callback
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -46,33 +44,39 @@ with DAG(
 
     # Task 1: Delete Embeddings from vector database
     vector_db_delete = PythonOperator(
-            task_id="vector_db_delete",
-            python_callable=delete_embeddings,
-            provide_context=True,
-            doc="deletes embeddings data associated with user_id and email_id",
-        )
+        task_id="vector_db_delete",
+        python_callable=delete_embeddings,
+        provide_context=True,
+        doc="deletes embeddings data associated with user_id and email_id",
+    )
     # Task 2: Delete from GCP
     gcp_delete = PythonOperator(
-            task_id="gcp_delete",
-            python_callable=delete_from_gcp,
-            provide_context=True,
-            doc="deletes all the gcp folder data associated with user_id and email_id",
-        )
+        task_id="gcp_delete",
+        python_callable=delete_from_gcp,
+        provide_context=True,
+        doc="deletes all the gcp folder data associated with user_id and email_id",
+    )
     # Task 3: Delete postgres token
     postgres_delete = PythonOperator(
-            task_id="postgres_delete",
-            python_callable=delete_from_postgres,
-            provide_context=True,
-            doc="deletes postgres user email data",
-        )
-    
+        task_id="postgres_delete",
+        python_callable=delete_from_postgres,
+        provide_context=True,
+        doc="deletes postgres user email data",
+    )
+
     # Task 4: send failure notification
     send_failure_notification = PythonOperator(
-    task_id="send_failure_notification",
-    python_callable=send_failure_email,
-    provide_context=True,
-    trigger_rule="one_failed",
-    doc="Sends a failure notification email if any task in the pipeline fails.",
-)
+        task_id="send_failure_notification",
+        python_callable=send_failure_email,
+        provide_context=True,
+        trigger_rule="one_failed",
+        doc="Sends a failure notification email if any task in the pipeline fails.",
+    )
     logger.info("Send failure notification task initialized")
-    start >> vector_db_delete >> gcp_delete >> postgres_delete >> send_failure_notification
+    (
+        start
+        >> vector_db_delete
+        >> gcp_delete
+        >> postgres_delete
+        >> send_failure_notification
+    )

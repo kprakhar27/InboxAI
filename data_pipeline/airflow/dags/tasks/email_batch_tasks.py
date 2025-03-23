@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 import traceback
 from datetime import datetime, timedelta, timezone
 
@@ -254,6 +255,10 @@ def trigger_email_get_for_batches(dag, **context):
         )
 
         task_id = f"trigger_get_pipeline_{batch_num}"
+
+        # Sleeping for 30 seconds to avoid rate limiting
+        logger.info("Sleeping for 30 seconds to avoid rate limiting")
+        time.sleep(30)
 
         # Create and execute the TriggerDagRunOperator
         trigger = TriggerDagRunOperator(

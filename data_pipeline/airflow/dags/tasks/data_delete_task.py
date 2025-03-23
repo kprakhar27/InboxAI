@@ -2,11 +2,12 @@ import logging
 import os
 import traceback
 from functools import wraps
-from google.cloud import storage
+
 from dotenv import load_dotenv
-from email_embedding_tasks import get_chroma_client
-from utils.db_utils import get_db_session
+from google.cloud import storage
 from sqlalchemy import text
+from tasks.email_embedding_tasks import get_chroma_client
+from utils.db_utils import get_db_session
 
 logger = logging.getLogger(__name__)
 load_dotenv(os.path.join(os.path.dirname(__file__), "/app/.env"))
@@ -16,6 +17,7 @@ storage_client = storage.Client()
 # Get the bucket
 bucket_name = os.getenv("BUCKET_NAME")
 bucket = storage_client.bucket(bucket_name)
+
 
 def delete_blob(bucket_name, blob_name):
     """Deletes a blob from the bucket."""
@@ -38,16 +40,17 @@ def delete_blob(bucket_name, blob_name):
 
     logger.info(f"Blob {blob_name} deleted.")
 
+
 def delete_from_gcp(**context):
     try:
         dag_run = context["dag_run"]
         conf = dag_run.conf
-        email_id=conf.get("email_address")
-        user_id=conf.get("user_id")
+        email_id = conf.get("email_address")
+        user_id = conf.get("user_id")
         storage_client = storage.Client()
         # Get the bucket
         bucket = storage_client.bucket(bucket_name)
-        to_delete=[]
+        to_delete = []
         logger.info("files to be deleted: ")
         for blob in bucket.list_blobs():
             if str(blob.name).__contains__(f"{user_id}/{email_id}"):
@@ -55,29 +58,32 @@ def delete_from_gcp(**context):
                 logger.info(blob.name)
         logger.info("starting to delete files")
         for file_name in to_delete:
-            delete_blob(bucket_name,file_name)
+            delete_blob(bucket_name, file_name)
     except Exception as e:
         logger.error(f"Error in deletion of files: {e}")
         raise
+
 
 def delete_embeddings(**context):
     try:
         dag_run = context["dag_run"]
         conf = dag_run.conf
-        email_id=conf.get("email_address")
-        user_id=conf.get("user_id")
-        chroma_client= get_chroma_client()
+        email_id = conf.get("email_address")
+        user_id = conf.get("user_id")
+        chroma_client = get_chroma_client()
         if user_id in chroma_client.list_collections():
-            collection= chroma_client.get_collection(user_id)
+            collection = chroma_client.get_collection(user_id)
         else:
             logger.error("Collection not found")
             raise Exception("Collection not found")
         results = collection.get(where={"to": email_id})
         document_ids = results["ids"]
         if document_ids:
-        # Delete documents by IDs
+            # Delete documents by IDs
             collection.delete(ids=document_ids)
-            logger.info(f"Deleted {len(document_ids)} documents for email_id: {email_id}")
+            logger.info(
+                f"Deleted {len(document_ids)} documents for email_id: {email_id}"
+            )
         else:
             logger.info(f"No documents found for email_id: {email_id}")
     except Exception as e:
@@ -88,19 +94,20 @@ def delete_from_postgres(**context):
     try:
         dag_run = context["dag_run"]
         conf = dag_run.conf
-        email_id=conf.get("email_address")
-        user_id=conf.get("user_id")
-        session=get_db_session()
-         # Attempt to execute the DELETE query
-        query = text("""
+        email_id = conf.get("email_address")
+        user_id = conf.get("user_id")
+        session = get_db_session()
+        # Attempt to execute the DELETE query
+        query = text(
+            """
             DELETE FROM google_tokens WHERE user_id = :id AND email = :email
-        """)
+        """
+        )
 
         # Execute the DELETE query
-        result = session.execute(query, {
-            "id": user_id,  # UUID as string
-            "email": email_id
-        })
+        result = session.execute(
+            query, {"id": user_id, "email": email_id}  # UUID as string
+        )
 
         # Commit the transaction
         session.commit()
@@ -117,9 +124,3 @@ def delete_from_postgres(**context):
     finally:
         # Close the session
         session.close()
-
-
-
-
-
-
