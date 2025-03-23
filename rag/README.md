@@ -11,6 +11,7 @@ Directory structure:
 └── rag/
     ├── CRAGPipeline.py
     ├── HybridRAGPipeline.py
+    ├── question-generation-retrieval-evaluation.ipynb
     ├── RAGConfig.py
     ├── RAGEvaluator.py
     ├── RAGPipeline.py
@@ -147,5 +148,29 @@ The test dataset was generated using a combination of generative AI models and s
 5. **Format Standardization**: All emails were formatted in a consistent JSON structure with metadata, content, and analytics fields to facilitate processing and evaluation.
 
 The final dataset comprises hundreds of realistic email examples that serve as a robust foundation for testing and evaluating our RAG systems.
+
+## Question Generation and Retrieval Evaluation
+
+The `question-generation-retrieval-evaluation.ipynb` notebook provides a comprehensive framework for:
+
+1. **Automatic Question Generation**: Generates meaningful questions from the dataset using LLM-based techniques to create a diverse evaluation set.
+
+2. **Retrieval Performance Analysis**: Evaluates how effectively each RAG implementation retrieves relevant context for generated questions.
+
+3. **Metrics Visualization**: Contains visualizations for:
+    - Retrieval precision/recall
+    - Answer relevance
+    - Context utilization
+    - Response latency
+
+4. **Pipeline Comparison**: Side-by-side comparison of Simple RAG, CRAG, and Hybrid RAG approaches on the same test cases.
+
+5. **Error Analysis**: Detailed breakdown of failure cases to identify improvement opportunities.
+
+Use this notebook to:
+- Generate custom evaluation questions from your dataset
+- Benchmark different retrieval strategies
+- Visualize performance metrics across models
+- Identify specific areas for pipeline optimization
 
 These categories can be used to detect the bias in the output generation process.
