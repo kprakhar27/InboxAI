@@ -15,7 +15,6 @@ uvicorn>=0.22.0
 nltk>=3.8.1
 spacy>=3.6.0
 mlflow
-sklearn
 importlib
 scikit-learn
 dataclasses
