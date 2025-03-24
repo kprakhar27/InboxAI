@@ -45,6 +45,6 @@ jobs:
           echo CHROMA_PORT=8000 >> backend/.env
           cat backend/.env
       - name: Run Experiment
-        run: python3 rag/rag_evaluator.py ${{ github.event.inputs.RAGPipeline }} ${{ github.event.inputs.ExperimentName }}
+        run: $(pwd)/rag/venv/bin/python3 rag/rag_evaluator.py ${{ github.event.inputs.RAGPipeline }} ${{ github.event.inputs.ExperimentName }}
       - name: Success
         run: echo "Deploy Success"
