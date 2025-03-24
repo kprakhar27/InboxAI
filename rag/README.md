@@ -4,6 +4,10 @@
 
 This folder contains various implementations of Retrieval-Augmented Generation (RAG) pipelines, including Simple RAG, Conditional RAG (CRAG) and Hybrid RAG pipelines. These pipelines are designed to evaluate the performance of RAG systems and log the results to an MLflow server for tracking and analysis.
 
+## CI/CD Integration
+
+The CI/CD GitHub Action for this project can be found at [`.github/workflows/test-rag.yml`](../.github/workflows/test-rag.yml)
+
 ## Folder Structure
 
 ```
