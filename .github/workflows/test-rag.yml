@@ -30,23 +30,20 @@ jobs:
         run: $(pwd)/rag/venv/bin/pip3 install -r rag/requirements.txt
       - name: Create .env file
         run: |
-          touch rag/.env          
-          echo MLFLOW_TRACKING_URI=http://${{ secrets.MLFLOW_USERNAME }}:${{ secrets.MLFLOW_PASSWORD }}@${{ secrets.HOST }}:7070 >> rag/.env
-          echo MLFLOW_USERNAME=${{ secrets.MLFLOW_USERNAME }} >> rag/.env
-          echo MLFLOW_PASSWORD=${{ secrets.MLFLOW_PASSWORD }} >> rag/.env
-          echo OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} >> rag/.env
-          echo TEST_DATASET_PATH=rag/qa_data.json >> rag/.env
-          echo EMBEDDING_MODEL=text-embedding-3-small >> rag/.env
-          echo LLM_MODEL=gpt-3.5-turbo >> rag/.env
-          echo TOP_K=5 >> rag/.env
-          echo TEMPERATURE=0.2 >> rag/.env
-          echo CHROMA_COLLECTION=test >> rag/.env
-          echo CHROMA_HOST=${{ secrets.HOST }} >> rag/.env
-          echo CHROMA_PORT=8000 >> rag/.env
-          cat rag/.env
-      - name: get data file
-        run: |
-          wget https://raw.githubusercontent.com/kprakhar27/InboxAI/refs/heads/main/rag/qa_data.json -O rag/qa_data.json
+          touch backend/.env          
+          echo MLFLOW_TRACKING_URI=http://${{ secrets.MLFLOW_USERNAME }}:${{ secrets.MLFLOW_PASSWORD }}@${{ secrets.HOST }}:7070 >> backend/.env
+          echo MLFLOW_USERNAME=${{ secrets.MLFLOW_USERNAME }} >> backend/.env
+          echo MLFLOW_PASSWORD=${{ secrets.MLFLOW_PASSWORD }} >> backend/.env
+          echo OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} >> backend/.env
+          echo TEST_DATASET_PATH=qa_data.json >> backend/.env
+          echo EMBEDDING_MODEL=text-embedding-3-small >> backend/.env
+          echo LLM_MODEL=gpt-3.5-turbo >> backend/.env
+          echo TOP_K=5 >> backend/.env
+          echo TEMPERATURE=0.2 >> backend/.env
+          echo CHROMA_COLLECTION=test >> backend/.env
+          echo CHROMA_HOST=${{ secrets.HOST }} >> backend/.env
+          echo CHROMA_PORT=8000 >> backend/.env
+          cat backend/.env
       - name: Run Experiment
         run: $(pwd)/rag/venv/bin/python3 rag/rag_evaluator.py ${{ github.event.inputs.RAGPipeline }} ${{ github.event.inputs.ExperimentName }}_${{ github.event.inputs.RAGPipeline }}
       - name: Success
