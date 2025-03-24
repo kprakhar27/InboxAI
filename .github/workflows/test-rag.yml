@@ -46,8 +46,8 @@ jobs:
           cat rag/.env
       - name: get data file
         run: |
-          wget https://raw.githubusercontent.com/ixahmed/InboxAI/main/rag/qa_data.json -O rag/qa_data.json
+          wget https://raw.githubusercontent.com/kprakhar27/InboxAI/refs/heads/main/rag/qa_data.json -O rag/qa_data.json
       - name: Run Experiment
-        run: $(pwd)/rag/venv/bin/python3 rag/rag_evaluator.py ${{ github.event.inputs.RAGPipeline }} ${{ github.event.inputs.ExperimentName }}
+        run: $(pwd)/rag/venv/bin/python3 rag/rag_evaluator.py ${{ github.event.inputs.RAGPipeline }} ${{ github.event.inputs.ExperimentName }}_${{ github.event.inputs.RAGPipeline }}
       - name: Success
         run: echo "Deploy Success"
