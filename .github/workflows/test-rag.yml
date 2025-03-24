@@ -35,7 +35,7 @@ jobs:
           echo MLFLOW_USERNAME=${{ secrets.MLFLOW_USERNAME }} >> rag/.env
           echo MLFLOW_PASSWORD=${{ secrets.MLFLOW_PASSWORD }} >> rag/.env
           echo OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} >> rag/.env
-          echo TEST_DATASET_PATH=qa_data.json >> rag/.env
+          echo TEST_DATASET_PATH=https://raw.githubusercontent.com/kprakhar27/InboxAI/refs/heads/main/rag/qa_data.json >> rag/.env
           echo EMBEDDING_MODEL=text-embedding-3-small >> rag/.env
           echo LLM_MODEL=gpt-3.5-turbo >> rag/.env
           echo TOP_K=5 >> rag/.env
