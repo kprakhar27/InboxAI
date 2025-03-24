@@ -31,7 +31,7 @@ jobs:
       - name: Create .env file
         run: |
           touch backend/.env          
-          echo MLFLOW_TRACKING_URI=http://${{ secrets.HOST }}:7070 >> backend/.env
+          echo MLFLOW_TRACKING_URI=http://${{ secrets.MLFLOW_USERNAME }}:${{ secrets.MLFLOW_PASSWORD }}@${{ secrets.HOST }}:7070 >> backend/.env
           echo MLFLOW_USERNAME=${{ secrets.MLFLOW_USERNAME }} >> backend/.env
           echo MLFLOW_PASSWORD=${{ secrets.MLFLOW_PASSWORD }} >> backend/.env
           echo OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} >> backend/.env

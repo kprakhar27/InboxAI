@@ -20,9 +20,9 @@ load_dotenv()
 # Initialize MLflow
 mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
 
-# Set authentication if you enabled it
-mlflow.set_tracking_username(os.getenv("MLFLOW_USERNAME"))
-mlflow.set_tracking_password(os.getenv("MLFLOW_PASSWORD"))
+# # Set authentication if you enabled it
+# mlflow.set_tracking_username(os.getenv("MLFLOW_USERNAME"))
+# mlflow.set_tracking_password(os.getenv("MLFLOW_PASSWORD"))
 
 def get_class_from_input(module_name, class_name):
     """
