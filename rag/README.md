@@ -99,6 +99,13 @@ Directory structure:
 python rag_evaluator.py `pipeline_name` `topic` `experiment_name`
 ```
 
+**To use the `RAGBiasAnalyzer`, initialize it with an instance of `RAGEvaluator` and call the `generate_bias_report` method**:
+
+```python
+bias_analyzer = RAGBiasAnalyzer(rag_evaluator)
+bias_report = bias_analyzer.generate_bias_report()
+```
+
 ### Logging Results
 
 The results of the evaluations are logged to the MLflow server specified in the `.env` file. You can view the logged metrics and parameters by accessing your MLflow server.
@@ -129,6 +136,13 @@ The results of the evaluations are logged to the MLflow server specified in the 
 - **evaluate_documents(state) -> Dict[str, Any]**: Evaluates documents in the reranking step.
 - **generate_response(query: str, context: List[str]) -> str**: Generates a response using the RAG chain.
 - **query(query: str) -> Dict[str, Any]**: Completes the RAG pipeline with metadata for evaluation.
+
+### RAGBiasAnalyzer
+
+- **analyze_topic_bias() -> Dict[str, Any]**: Analyzes potential bias across different topics and industries, returning a dictionary of bias analysis results.
+- **_analyze_subset_bias(cases: List[Dict], subset_type: str) -> Dict[str, float]**: Analyzes bias for a subset of test cases, calculating metrics such as accuracy, relevance, and completeness.
+- **_calculate_bias_indicators(topic_results: Dict, industry_results: Dict) -> Dict[str, float]**: Calculates overall bias indicators by analyzing the variance in accuracy, relevance, and completeness across topics and industries.
+- **generate_bias_report(experiment_name: str = "RAG_Bias_Analysis") -> Dict[str, Any]**: Generates a comprehensive bias analysis report, logging the results to MLflow.
 
 ## Test Dataset Generation
 
