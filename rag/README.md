@@ -6,14 +6,13 @@ This folder contains various implementations of Retrieval-Augmented Generation (
 
 ## CI/CD Integration
 
-The CI/CD GitHub Action for this project can be found at [`.github/workflows/test-rag.yml`](../.github/workflows/test-rag.yml).
-The select best model included in the CI CD action file.
+The CI/CD GitHub Action for this project can be found at [`.github/workflows/test-rag.yml`](../.github/workflows/test-rag.yml). The select best model included in the CI/CD action file.
 
 ## Folder Structure
 
 ```
 Directory structure:
-```
+
 └── rag/
     ├── README.md                             # Documentation for the RAG pipeline project
     ├── CRAGPipeline.py                       # Implementation of the Conditional RAG (CRAG) pipeline with MLflow integration
@@ -29,7 +28,6 @@ Directory structure:
         ├── question-generation-retrieval-evaluation.ipynb  # Notebook for question generation and retrieval evaluation
         ├── question_generation_retrieval_evaluation.py     # Script for question generation and retrieval evaluation
         └── synthetic_email_generator.py                    # Code to generate synthetic emails for evaluation and bias detection
-```
 ```
 
 - **RAGPipeline.py**: Contains the implementation of the Simple RAG pipeline with MLflow integration.
@@ -96,10 +94,10 @@ Directory structure:
 
 ### Running Bias Evaluation
 
-**For any topic out of the topics that we created emails for** :
-    ```sh
-    python rag_evaluator.py `pipeline name` `topic` `experiment_name`
-    ```
+**For any topic out of the topics that we created emails for**:
+```sh
+python rag_evaluator.py `pipeline_name` `topic` `experiment_name`
+```
 
 ### Logging Results
 
