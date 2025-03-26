@@ -41,6 +41,7 @@ with DAG(
     dag_id="email_create_batch_pipeline",
     default_args=default_args,
     description="Email Fetch Pipeline: Fetches emails and creates batches for preprocessing.",
+    schedule_interval=None,
     catchup=False,
     max_active_runs=1,
     tags=["email", "fetch", "pipeline"],
