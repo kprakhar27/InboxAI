@@ -1,6 +1,6 @@
 import logging
 import os
-import traceback
+import re
 from typing import Optional
 
 import chromadb
@@ -13,10 +13,33 @@ from google.cloud import storage
 
 # Initialize logging
 logger = logging.getLogger(__name__)
-load_dotenv()
 LOCAL_TMP_DIR = "/tmp/email_embeddings"
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Move this to the top of the file, before any OpenAI operations
+load_dotenv()
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    raise ValueError("OPENAI_API_KEY environment variable is not set")
+
+# Initialize the OpenAI client with the API key
+client = openai.Client(api_key=api_key)
+
+
+def sanitize_collection_name(email: str) -> str:
+    # Replace @ and . with underscore
+    sanitized = email.replace("@", "_").replace(".", "_")
+    # Remove any consecutive underscores
+    while "__" in sanitized:
+        sanitized = sanitized.replace("__", "_")
+    # Ensure it starts and ends with alphanumeric
+    sanitized = sanitized.strip("_")
+    # Add prefix if too short
+    if len(sanitized) < 3:
+        sanitized = f"user_{sanitized}"
+    # Truncate if too long
+    if len(sanitized) > 63:
+        sanitized = sanitized[:63].rstrip("_")
+    return sanitized
 
 
 def get_chroma_client():
@@ -42,11 +65,15 @@ def upload_to_chroma(user_id, embedded_data_path, client) -> None:
     try:
         # Load the data
         df = pd.read_parquet(embedded_data_path)
-        collection = client.get_or_create_collection(name=user_id)
+
+        # Sanitize the user ID
+        collection_name = sanitize_collection_name(user_id)
+        logger.info(f"Using collection name: {collection_name} for user: {user_id}")
+        collection = client.get_or_create_collection(name=collection_name)
 
         # Upload data to Chroma
         collection.upsert(
-            documents=df.subject.tolist(),
+            documents=df.redacted_text.tolist(),
             embeddings=df.embeddings.tolist(),
             metadatas=df.metadata.tolist(),
             ids=df.message_id.tolist(),
@@ -91,6 +118,30 @@ def download_processed_from_gcs(**context):
         raise
 
 
+def extract_email(email):
+    match = re.search(r"[\w\.-]+@[\w\.-]+", email)
+    return match.group(0) if match else None
+
+
+def chunk_text(text: str, max_tokens: int = 8000) -> list[str]:
+    """Split text into chunks that fit within token limit."""
+    # Rough estimate: 1 token ≈ 4 characters
+    max_chars = max_tokens * 4
+    chunks = []
+
+    while len(text) > max_chars:
+        # Find last period before max_chars
+        split_point = text[:max_chars].rfind(".")
+        if split_point == -1:
+            split_point = max_chars
+
+        chunks.append(text[: split_point + 1])
+        text = text[split_point + 1 :]
+
+    chunks.append(text)
+    return chunks
+
+
 def generate_embeddings(**context):
     try:
         local_file_path = context["ti"].xcom_pull(key="local_file_path")
@@ -98,36 +149,58 @@ def generate_embeddings(**context):
         embedded_data_path = (
             f"{LOCAL_TMP_DIR}/processed_emails_{execution_date}.parquet"
         )
+
         df = pd.read_parquet(local_file_path)
         df["labels"] = df["labels"].astype(str)
-        # using apply function to create a new column
+
+        # Create metadata column
         df["metadata"] = df.apply(
             lambda row: {
-                "from": row.from_email,
+                "from": extract_email(row.from_email),
                 "date": row.date,
                 "labels": row.labels,
+                "to": extract_email(row.to[0]),
             },
             axis=1,
         )
+
+        # Generate embeddings with chunking
+        def get_embedding(text):
+            chunks = chunk_text(text)
+            if len(chunks) == 1:
+                # Single chunk - return embedding directly
+                return (
+                    openai.embeddings.create(input=text, model="text-embedding-3-small")
+                    .data[0]
+                    .embedding
+                )
+            else:
+                # Multiple chunks - average their embeddings
+                chunk_embeddings = [
+                    openai.embeddings.create(
+                        input=chunk, model="text-embedding-3-small"
+                    )
+                    .data[0]
+                    .embedding
+                    for chunk in chunks
+                ]
+                return np.mean(chunk_embeddings, axis=0).tolist()
+
+        # Apply embedding generation with progress logging
+        total_rows = len(df)
         df["embeddings"] = df.apply(
-            lambda row: openai.embeddings.create(
-                input=row.redacted_text, model="text-embedding-3-small"
-            )
-            .data[0]
-            .embedding,
+            lambda row: get_embedding(row.redacted_text),
             axis=1,
         )
 
-        # Ensure directory exists
+        # Save results
         os.makedirs(os.path.dirname(embedded_data_path), exist_ok=True)
-
-        # Save the embedded data to parquet file
         df.to_parquet(embedded_data_path)
         logger.info(f"Successfully saved embeddings to {embedded_data_path}")
 
-        # Push the file path to XCom for the next task
         context["ti"].xcom_push(key="embedded_data_path", value=embedded_data_path)
         return True
+
     except Exception as e:
         logger.error(f"Error generating embeddings: {e}")
         raise
