@@ -4,6 +4,7 @@ import traceback
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 
+import numpy as np
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from dotenv import load_dotenv
 from pydantic import ValidationError
@@ -95,6 +96,125 @@ def get_batch_data_from_trigger(**context):
         raise
 
 
+def check_anomaly(emails_data, volume_threshold=3.0, size_threshold=3.0):
+    """
+    Detects anomalies in email data without time-based analysis.
+    Checks for:
+    - Suspicious sender patterns
+    - Abnormal attachment characteristics
+    - Suspicious content keywords
+
+    Args:
+        emails_data (list): List of email dictionaries with message data
+        volume_threshold (float): Std dev threshold for volume anomalies
+        size_threshold (float): Std dev threshold for size anomalies
+
+    Returns:
+        bool: True if anomaly detected, False otherwise
+    """
+    if not emails_data:
+        return False
+
+    # 1. Sender Analysis
+    sender_counts = {}
+    for email in emails_data:
+        sender = email.get("from", "")
+        sender_counts[sender] = sender_counts.get(sender, 0) + 1
+
+    # Flag if single sender with many emails
+    if len(sender_counts) == 1 and len(emails_data) > 5:
+        return True
+    # Flag if any sender has unusually high count
+    if len(emails_data) > 1:
+        mean_emails = np.mean(list(sender_counts.values()))
+        std_emails = np.std(list(sender_counts.values()))
+        if any(
+            count > mean_emails + (volume_threshold * std_emails)
+            for count in sender_counts.values()
+        ):
+            return True
+
+    # 2. Attachment Analysis
+    attachment_sizes = []
+    for email in emails_data:
+        if "attachments" in email and email["attachments"]:
+            for att in email["attachments"]:
+                if "size" in att:
+                    attachment_sizes.append(att["size"])
+
+    if attachment_sizes:
+        mean_size = np.mean(attachment_sizes)
+        std_size = np.std(attachment_sizes)
+
+        # Check for unusually large attachments
+        if any(
+            size > mean_size + (size_threshold * std_size) for size in attachment_sizes
+        ):
+            return True
+
+        # Check for executable attachments
+        dangerous_types = {"exe", "bat", "msi", "js", "vbs", "jar", "ps1", "scr"}
+        if any(
+            att.get("type", "").lower().split(".")[-1] in dangerous_types
+            for email in emails_data
+            for att in email.get("attachments", [])
+        ):
+            return True
+
+    # 3. Content Analysis
+    suspicious_keywords = {
+        "urgent",
+        "password",
+        "verify",
+        "account",
+        "login",
+        "security",
+        "update",
+        "click",
+        "immediately",
+        "action required",
+        "suspended",
+        "limited time",
+        "confirm",
+        "credentials",
+    }
+
+    for email in emails_data:
+        subject = email.get("subject", "").lower()
+        body = email.get("body", "").lower()
+
+        # Count suspicious keywords
+        suspicious_count = sum(
+            1
+            for keyword in suspicious_keywords
+            if keyword in subject or keyword in body
+        )
+
+        # Flag if more than 2 suspicious keywords found
+        if suspicious_count > 2:
+            return True
+
+        # Flag if common phishing patterns found
+        if any(
+            "http://" in body and "click here" in body,
+            "your account" in subject and "verify" in body,
+            "password reset" in subject and not email.get("is_internal", False),
+        ):
+            return True
+
+    # 4. Subject Line Analysis
+    for email in emails_data:
+        subject = email.get("subject", "")
+        # Check for all caps subject lines
+        if len(subject) > 10 and subject.isupper():
+            return True
+        # Check for excessive punctuation
+        if sum(1 for c in subject if c in "!?") > 3:
+            return True
+
+    return False
+
+
 def process_emails_batch(**context):
     """
     Process a batch of emails from the batch_data XCom.
@@ -134,6 +254,13 @@ def process_emails_batch(**context):
         # Retrieve email data
         emails_data = retrieve_email_data(gmail_service, message_ids)
         logger.info(f"Retrieved {len(emails_data)} emails")
+
+        # Analomy detection for the emails data
+        flag = check_anomaly(emails_data)
+
+        if flag:
+            logger.info("Anomaly detected in the emails data")
+            send_failure_email_anomoly(context)
 
         # Validate emails using Pydantic models
         valid_emails, validation_errors = validate_emails(emails_data)
@@ -379,6 +506,26 @@ def send_failure_email(**context):
         return False
     finally:
         logger.info("Finished send_failure_email")
+
+
+def send_failure_email_anomoly(**context):
+    """Send a failure email notification."""
+    logger.info("Starting send_anomly_email")
+    try:
+        subject, body = generate_email_content(context, type="failure")
+        result = send_notification_email(subject, body)
+
+        run_id = context["ti"].xcom_pull(key="run_id") or "unknown_run_id"
+        if result:
+            logger.info(f"Anamoly Detected for run_id {run_id}")
+
+        return result
+    except Exception as e:
+        logger.error(f"Error in send_anomly_email: {str(e)}")
+        return False
+    finally:
+        logger.info("Finished send_anomly_email")
+
 
 def send_success_email(**context):
     """Send a success email notification."""

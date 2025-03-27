@@ -37,6 +37,7 @@ with DAG(
     dag_id="email_preprocessing_pipeline",
     default_args=default_args,
     description="Email preprocessing pipeline for embedding generation",
+    schedule_interval=None,
     catchup=False,
     max_active_runs=1,
     tags=["email", "preprocessing"],
@@ -90,7 +91,7 @@ with DAG(
             f"Email preprocessing pipeline failed for date: {context['ds']}"
         ),
     )
-    
+
     (
         start
         >> download_raw_data

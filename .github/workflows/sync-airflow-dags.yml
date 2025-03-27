@@ -1,0 +1,49 @@
+name: Sync Airflow DAGs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data_pipeline/airflow/dags/**'  # Only trigger on DAG changes
+  workflow_dispatch:
+
+jobs:
+  sync-dags:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Get full commit history
+
+      - name: Atomic DAG Sync
+        run: |
+          # Config
+          SRC_DIR="$GITHUB_WORKSPACE/data_pipeline/airflow/dags"
+          TARGET_DIR="/home/ubuntu/InboxAI/data_pipeline/airflow/dags"
+          
+          # Create directory structure (if missing)
+          sudo mkdir -p "$TARGET_DIR"
+          
+          # Maintainable sync command:
+          # 1. Preserves timestamps (-t)
+          # 2. Mirrors source exactly (--delete)
+          # 3. Retries on failure (--retries)
+          sudo rsync -avrt \
+              --delete \
+              --chown=ubuntu:ubuntu \
+              --retries=3 \
+              --exclude='*.pyc' \
+              --exclude='__pycache__' \
+              "$SRC_DIR/" "$TARGET_DIR/"
+
+          # Verify sync
+          echo "Synced DAGs:"
+          ls -l "$TARGET_DIR"
+          echo "Total DAG files: $(find "$TARGET_DIR" -type f -name '*.py' | wc -l)"
+
+      - name: Trigger Airflow Rescan (Optional)
+        run: |
+          # Only needed if you changed min_file_process_interval
+          airflow db reset --yes || true
+          airflow dags reserialize || true

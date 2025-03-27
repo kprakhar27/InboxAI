@@ -1,0 +1,38 @@
+name: Deploy Chroma
+
+on:
+  push:
+    branches: [main]
+    paths: 
+      - 'vector-database/docker-compose.yml'  # Only trigger when Dockerfile changes
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Stop and clean existing containers
+        working-directory: ./vector-database
+        run: |
+          docker-compose down --volumes --remove-orphans --timeout 5 || true
+          docker network prune -f
+
+      - name: Rebuild and redeploy
+        working-directory: ./vector-database
+        run: |
+          # Build fresh image from the updated Dockerfile
+          docker-compose build --no-cache
+          # Ensure network exists
+          docker network create chroma_network || true
+          # Start containers
+          docker-compose up -d
+
+      - name: Verify deployment
+        run: |
+          echo "Running containers:"
+          docker ps
+          echo "Health check:"
+          curl -f http://localhost:8000/api/v1/heartbeat
