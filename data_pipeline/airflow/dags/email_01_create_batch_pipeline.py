@@ -43,7 +43,7 @@ with DAG(
     description="Email Fetch Pipeline: Fetches emails and creates batches for preprocessing.",
     schedule_interval=None,
     catchup=False,
-    max_active_runs=1,
+    max_active_runs=4,
     tags=["email", "fetch", "pipeline"],
     params={
         "email_address": "",
