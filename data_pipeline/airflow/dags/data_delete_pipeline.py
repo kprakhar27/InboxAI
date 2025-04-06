@@ -31,6 +31,7 @@ with DAG(
     dag_id="data_deletion_pipeline",
     default_args=default_args,
     description="Email data deletion Pipeline",
+    schedule_interval=None,
     catchup=False,
     max_active_runs=1,
     tags=["email", "delete", "pipeline"],
