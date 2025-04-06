@@ -17,12 +17,21 @@ LOCAL_TMP_DIR = "/tmp/email_embeddings"
 
 # Move this to the top of the file, before any OpenAI operations
 load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    raise ValueError("OPENAI_API_KEY environment variable is not set")
 
-# Initialize the OpenAI client with the API key
-client = openai.Client(api_key=api_key)
+
+def get_openai_client():
+    """
+    Initialize OpenAI client with API key from environment variable.
+
+    returns:
+        openai.Client: OpenAI client instance.
+    raises:
+        ValueError: If OPENAI_API_KEY environment variable is not set.
+    """
+    api = os.getenv("OPENAI_API_KEY")
+    if not api:
+        raise ValueError("OPENAI_API_KEY environment variable is not set")
+    return openai.Client(api_key=api)
 
 
 def sanitize_collection_name(email: str) -> str:
@@ -144,6 +153,7 @@ def chunk_text(text: str, max_tokens: int = 8000) -> list[str]:
 
 def generate_embeddings(**context):
     try:
+        client = get_openai_client()
         local_file_path = context["ti"].xcom_pull(key="local_file_path")
         execution_date = context["ds"]
         embedded_data_path = (
@@ -170,14 +180,14 @@ def generate_embeddings(**context):
             if len(chunks) == 1:
                 # Single chunk - return embedding directly
                 return (
-                    openai.embeddings.create(input=text, model="text-embedding-3-small")
+                    client.embeddings.create(input=text, model="text-embedding-3-small")
                     .data[0]
                     .embedding
                 )
             else:
                 # Multiple chunks - average their embeddings
                 chunk_embeddings = [
-                    openai.embeddings.create(
+                    client.embeddings.create(
                         input=chunk, model="text-embedding-3-small"
                     )
                     .data[0]
