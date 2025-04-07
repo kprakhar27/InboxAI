@@ -35,6 +35,10 @@ with DAG(
     catchup=False,
     max_active_runs=1,
     tags=["email", "delete", "pipeline"],
+    params={
+        "email_address": "",
+        "user_id": "",
+    },
 ) as dag:
     logger.info("Initialized DAG for deletion of user data the pipeline")
     start = EmptyOperator(

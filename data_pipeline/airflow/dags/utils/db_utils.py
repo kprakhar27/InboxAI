@@ -60,24 +60,51 @@ def get_last_read_timestamp(session, email):
         return None
 
 
-def update_last_read_timestamp(session, email, second_last, timestamp):
+def update_last_read_timestamp(session, email, second_last, timestamp, user_id):
     """Update the last read timestamp for an email."""
     try:
-        logger.info(f"Updating last read timestamp for email: {email} to {timestamp}")
-        tracker = session.query(EmailReadTracker).filter_by(email=email).first()
+        logger.info(
+            f"Updating last read timestamp for email: {email} and user_id: {user_id} to {timestamp}"
+        )
+        tracker = (
+            session.query(EmailReadTracker)
+            .filter_by(email=email, user_id=user_id)
+            .first()
+        )
         if tracker:
             tracker.second_last_read_at = second_last
             tracker.last_read_at = timestamp
             logger.info("Updated existing record.")
         else:
-            tracker = EmailReadTracker(email=email, last_read_at=timestamp)
+            tracker = EmailReadTracker(
+                email=email, last_read_at=timestamp, user_id=user_id
+            )
             session.add(tracker)
             logger.info("Created new record.")
         session.commit()
         logger.info("Database commit successful.")
     except Exception as e:
         session.rollback()
-        logger.error(f"Error updating last read timestamp for email {email}: {e}")
+        logger.error(
+            f"Error updating last read timestamp for email {email} and user_id {user_id}: {e}"
+        )
+
+
+def update_run_status(session, email, user_id, status):
+    """Update the run status for an email."""
+    logger.info(f"Updating run status for email: {email} to {status}")
+    # Check if the email is already in the email_run_status table
+    # Update email_run_status table
+    query = f"""
+            INSERT INTO email_run_status (user_id, email, run_status)
+            VALUES (:user_id, :email, '{status}')
+            ON CONFLICT (user_id) 
+            DO UPDATE SET run_status = '{status}', email = :email
+        """
+
+    session.execute(query, {"user_id": user_id, "email": email})
+    session.commit()
+    logger.info("Run status updated successfully.")
 
 
 def add_unique_timestamps(session, timestamp_email_map):

@@ -23,6 +23,7 @@ from utils.db_utils import (
     add_preprocessing_summary,
     get_db_session,
     update_last_read_timestamp,
+    update_run_status,
 )
 
 logger = logging.getLogger(__name__)
@@ -118,7 +119,7 @@ def check_anomaly(emails_data, volume_threshold=3.0, size_threshold=3.0):
     # 1. Sender Analysis
     sender_counts = {}
     for email in emails_data:
-        sender = email.get("from", "")
+        sender = email["from"].lower()
         sender_counts[sender] = sender_counts.get(sender, 0) + 1
 
     # Flag if single sender with many emails
@@ -287,8 +288,9 @@ def process_emails_batch(**context):
             end_timestamp = datetime.fromisoformat(batch_data.get("end_timestamp"))
             start_timestamp = datetime.fromisoformat(batch_data.get("start_timestamp"))
             update_last_read_timestamp(
-                session, email_address, start_timestamp, end_timestamp
+                session, email_address, start_timestamp, end_timestamp, user_id
             )
+            update_run_status(session, email_address, user_id)
             logger.info(f"Updated last read timestamp to {end_timestamp}")
 
         # Push metrics to XCom

@@ -17,7 +17,7 @@ from googleapiclient.errors import HttpError
 from models_pydantic import EmailSchema
 from pydantic import ValidationError
 from services.storage_service import StorageService
-from utils.db_utils import get_db_session, get_last_read_timestamp
+from utils.db_utils import get_db_session, get_last_read_timestamp, update_run_status
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +62,13 @@ def create_db_session_task(**context):
     context["task_instance"].xcom_push(
         key="db_connection_uri", value=str(connection_uri)
     )
+    update_run_status(
+        session,
+        context["task_instance"].xcom_pull(key="email"),
+        context["task_instance"].xcom_pull(key="user_id"),
+        "STARTED",
+    )
+
     # Close the session after use
     session.close()
 
@@ -257,7 +264,7 @@ def get_smtp_config():
     return smtp_host, smtp_port
 
 
-def generate_email_content(context, type="failure"):
+def generate_email_content(session, context, type="failure"):
     """Generate email subject and body based on context and notification type."""
     # Get basic information
     task_instance = context.get("task_instance")
