@@ -107,3 +107,21 @@ class EmailPreprocessingSummary(db.Model):
     failed_emails = db.Column(db.Integer, nullable=False)
     failed_threads = db.Column(db.Integer, nullable=False)
     run_timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+
+run_status_enum = ENUM(
+    "STARTED", "COMPLETED", "FAILED", name="run_status_enum", create_type=True
+)
+
+
+class EmailRunStatus(db.Model):
+    __tablename__ = "email_run_status"
+
+    user_id = db.Column(UUID(as_uuid=True), primary_key=True, nullable=False)
+    email = db.Column(db.String(120), primary_key=True, nullable=False)
+    run_status = db.Column(run_status_enum, nullable=False)
+    updated_at = db.Column(
+        db.DateTime(timezone=True),
+        default=db.func.current_timestamp(),
+        onupdate=db.func.current_timestamp(),
+    )
