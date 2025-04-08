@@ -242,7 +242,7 @@ def process_emails_batch(**context):
             update_last_read_timestamp(
                 session, email_address, start_timestamp, end_timestamp, user_id
             )
-            update_run_status(session, email_address, user_id)
+            update_run_status(session, email_address, user_id, "COMPLETED")
             logger.info(f"Updated last read timestamp to {end_timestamp}")
 
         # Push metrics to XCom
