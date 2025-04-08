@@ -191,6 +191,7 @@ def update_processing_status(session, run_id, status):
 def add_preprocessing_summary(
     session,
     run_id,
+    user_id,
     email,
     total_emails_processed,
     total_threads_processed,
@@ -203,6 +204,7 @@ def add_preprocessing_summary(
     try:
         summary = EmailPreprocessingSummary(
             run_id=run_id,
+            user_id=user_id,
             email=email,
             total_emails_processed=total_emails_processed,
             total_threads_processed=total_threads_processed,

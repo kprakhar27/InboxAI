@@ -140,7 +140,9 @@ def upload_processed_to_gcs(**context):
     )
     # Push the GCS URI to XCom
     uploaded_processed_gcs_uri = f"gs://{bucket_name}/{object_name}"
-    context['task_instance'].xcom_push(key="processed_gcs_uri", value=uploaded_processed_gcs_uri)
+    context["task_instance"].xcom_push(
+        key="processed_gcs_uri", value=uploaded_processed_gcs_uri
+    )
     return f"gs://{bucket_name}/{object_name}"
 
 
@@ -152,10 +154,10 @@ def trigger_embedding_pipeline(**context):
 
     try:
         # Get metadata from previous task
-        processed_gcs_uri = context['task_instance'].xcom_pull(
+        processed_gcs_uri = context["task_instance"].xcom_pull(
             task_ids="upload_processed_data", key="processed_gcs_uri"
         )
-        
+
         logging.info(f"Processed GCS URI: {processed_gcs_uri}")
 
         # Pass execution date to the triggered DAG

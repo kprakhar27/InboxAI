@@ -326,6 +326,7 @@ def publish_metrics_task(**context):
     """Publish metrics for the pipeline."""
     logger.info("Starting publish_metrics_task")
     email = context["dag_run"].conf.get("email_address")
+    user_id = context["dag_run"].conf.get("user_id")
     try:
         run_id = context["ti"].xcom_pull(key="run_id")
         if not run_id:
@@ -347,6 +348,7 @@ def publish_metrics_task(**context):
         add_preprocessing_summary(
             session,
             run_id,
+            user_id,
             email,
             total_messages,
             0,

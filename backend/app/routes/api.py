@@ -12,7 +12,13 @@ from requests.auth import HTTPBasicAuth
 from sqlalchemy import text
 
 from .. import db
-from ..models import GoogleToken, Users
+from ..models import (
+    EmailProcessingSummary,
+    EmailReadTracker,
+    EmailRunStatus,
+    GoogleToken,
+    Users,
+)
 from .get_flow import get_flow
 
 dotenv_path = join(dirname(__file__), ".env")
@@ -116,21 +122,40 @@ def get_connected_accounts():
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    google_tokens = GoogleToken.query.filter_by(user_id=user.id).all()
-    if not google_tokens:
+    accounts_query = (
+        db.session.query(
+            GoogleToken, EmailReadTracker.last_read_at, EmailRunStatus.run_status
+        )
+        .join(
+            EmailReadTracker,
+            (GoogleToken.email == EmailReadTracker.email)
+            & (GoogleToken.user_id == EmailReadTracker.user_id),
+            isouter=True,
+        )
+        .join(
+            EmailRunStatus,
+            (GoogleToken.email == EmailRunStatus.email)
+            & (GoogleToken.user_id == EmailRunStatus.user_id),
+            isouter=True,
+        )
+        .filter(GoogleToken.user_id == user.id)
+        .all()
+    )
+
+    if not accounts_query:
         return jsonify({"error": "No connected accounts found"}), 404
 
     accounts = []
-    for token in google_tokens:
-        accounts.append(
-            {
-                "email": token.email,
-                "refresh_token": token.refresh_token,
-                "expires_at": token.expires_at.isoformat(),
-            }
-        )
+    for token, last_read, run_status in accounts_query:
+        account_info = {
+            "email": token.email,
+            "last_refresh": last_read.isoformat() if last_read else None,
+            "current_run_status": run_status if run_status else "NO_STATUS",
+            "connected_since": token.created_at.isoformat(),
+        }
+        accounts.append(account_info)
 
-    return jsonify({"accounts": accounts}), 200
+    return jsonify({"accounts": accounts, "total_accounts": len(accounts)}), 200
 
 
 @api_bp.route("/refreshemails", methods=["POST"])

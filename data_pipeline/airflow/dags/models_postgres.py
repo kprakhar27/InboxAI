@@ -39,7 +39,7 @@ class GoogleToken(db.Model):
     __tablename__ = "google_tokens"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False)
     email = db.Column(db.String(120), nullable=False)
     access_token = db.Column(db.String(500), nullable=False)
     refresh_token = db.Column(db.String(500), nullable=False)
@@ -87,6 +87,7 @@ class EmailProcessingSummary(db.Model):
     __tablename__ = "email_processing_summary"
 
     run_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False)
     email = db.Column(db.String(120), nullable=False)
     total_emails_processed = db.Column(db.Integer, nullable=False)
     total_threads_processed = db.Column(db.Integer, nullable=False)
@@ -99,6 +100,7 @@ class EmailPreprocessingSummary(db.Model):
     __tablename__ = "email_preprocessing_summary"
 
     run_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False)
     email = db.Column(db.String(120), nullable=False)
     total_emails_processed = db.Column(db.Integer, nullable=False)
     total_threads_processed = db.Column(db.Integer, nullable=False)
