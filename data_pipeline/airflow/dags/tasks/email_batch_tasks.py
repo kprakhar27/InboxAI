@@ -134,7 +134,7 @@ def create_batches(**context):
         gmail_service = GmailService(credentials)
 
         # Step 2: Get time range
-        start_timestamp, end_timestamp = get_timestamps(session, email)
+        start_timestamp, end_timestamp = get_timestamps(session, user_id, email)
 
         # Step 3: Fetch message IDs in time range (reusing fetch_emails)
         message_ids = fetch_emails(gmail_service, start_timestamp, end_timestamp)

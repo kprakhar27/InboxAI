@@ -111,8 +111,8 @@ def authenticate_gmail(session, email):
     return credentials
 
 
-def get_timestamps(session, email):
-    last_read = get_last_read_timestamp(session, email)
+def get_timestamps(session, user_id, email):
+    last_read = get_last_read_timestamp(session, user_id, email)
     start_timestamp = last_read.replace(tzinfo=timezone.utc)
     end_timestamp = datetime.now(timezone.utc)
     logger.info(f"Processing emails from {start_timestamp} to {end_timestamp}")
