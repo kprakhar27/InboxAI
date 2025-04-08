@@ -86,8 +86,9 @@ def choose_processing_path(email, **context) -> str:
     try:
         session = get_db_session()
         email = context["dag_run"].conf.get("email_address")
+        user_id = context["dag_run"].conf.get("user_id")
 
-        last_read = get_last_read_timestamp(session, email)
+        last_read = get_last_read_timestamp(session, user_id, email)
         # Add UTC timezone to last_read
         last_read = last_read.replace(tzinfo=timezone.utc)
         # Create end_timestamp with UTC timezone
