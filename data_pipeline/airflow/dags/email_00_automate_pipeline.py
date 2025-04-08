@@ -50,7 +50,7 @@ def fetch_users(**context):
 
 # Define the DAG
 with DAG(
-    dag_id="cron_trigger_dynamic_dag",
+    dag_id="email_00_automate_pipeline",
     default_args=default_args,
     description="Dynamically trigger email batch pipeline for each user",
     schedule_interval="*/6 * * * *",  # Runs every 6 hours

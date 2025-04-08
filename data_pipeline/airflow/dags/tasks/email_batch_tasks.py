@@ -207,8 +207,8 @@ def trigger_email_get_for_batches(dag, **context):
     )
 
     if not batches:
-        logger.error("No email batches found in XCom")
-        raise ValueError("No email batches found to process")
+        logger.info("No email batches found in XCom - completing successfully")
+        return 0
 
     # Log batch info
     logger.info(f"Found {len(batches)} batches for email {email}")
