@@ -118,7 +118,7 @@ class CRAGPipeline:
                 "generate": "generate",
             },
         )
-        self.workflow.add_edge("transform_query", "retrieve")
+        self.workflow.add_edge("transform_query", "generate")
         self.workflow.add_edge("generate", END)
 
         # Compile
