@@ -52,7 +52,8 @@ def get_last_read_timestamp_task(**context):
     try:
         session = get_db_session()
         email = context["dag_run"].conf.get("email_address")
-        last_read = get_last_read_timestamp(session, email)
+        user_id = context["dag_run"].conf.get("user_id")
+        last_read = get_last_read_timestamp(session, user_id, email)
         last_read_str = last_read.strftime("%Y-%m-%d %H:%M:%S.%f %Z")
 
         end_timestamp = datetime.now(timezone.utc)

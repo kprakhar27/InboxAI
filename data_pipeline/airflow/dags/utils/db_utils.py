@@ -40,11 +40,17 @@ def get_db_session():
         raise
 
 
-def get_last_read_timestamp(session, email):
+def get_last_read_timestamp(session, user_id, email):
     """Fetch the last read timestamp for an email."""
     try:
-        logger.info(f"Fetching last read timestamp for email: {email}")
-        tracker = session.query(EmailReadTracker).filter_by(email=email).first()
+        logger.info(
+            f"Fetching last read timestamp for email: {email} and user_id: {user_id}"
+        )
+        tracker = (
+            session.query(EmailReadTracker)
+            .filter_by(email=email, user_id=user_id)
+            .first()
+        )
         if tracker:
             logger.info(f"Found last read timestamp: {tracker.last_read_at}")
             return tracker.last_read_at
@@ -56,7 +62,9 @@ def get_last_read_timestamp(session, email):
             )
             return default_timestamp
     except Exception as e:
-        logger.error(f"Error fetching last read timestamp for email {email}: {e}")
+        logger.error(
+            f"Error fetching last read timestamp for email {email} and user_id {user_id}: {e}"
+        )
         return None
 
 
