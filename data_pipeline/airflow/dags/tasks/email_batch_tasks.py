@@ -18,6 +18,11 @@ from utils.airflow_utils import (
     get_timestamps,
 )
 from utils.db_utils import get_db_session, get_last_read_timestamp
+from utils.gcp_logging_utils import setup_gcp_logging
+
+# Initialize logger
+logger = setup_gcp_logging("email_batch_tasks")
+logger.info("Initialized logger for email_batch_tasks")
 
 logger = logging.getLogger(__name__)
 load_dotenv(os.path.join(os.path.dirname(__file__), "/app/.env"))

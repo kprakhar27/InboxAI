@@ -12,9 +12,11 @@ from tasks.email_preprocess_tasks import (
     trigger_embedding_pipeline,
     upload_processed_to_gcs,
 )
+from utils.gcp_logging_utils import setup_gcp_logging
 
-# Initialize logging
-logger = logging.getLogger(__name__)
+# Initialize logger
+logger = setup_gcp_logging("email_03_preprocessing_pipeline")
+logger.info("Initialized logger for email_03_preprocessing_pipeline")
 
 LOCAL_TMP_DIR = "/tmp/inboxai_preprocessing"
 

@@ -56,7 +56,7 @@ class EmailReadTracker(db.Model):
     __tablename__ = "email_read_tracker"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = db.Column(UUID(as_uuid=True), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
+    email = db.Column(db.String(120), nullable=False)
     second_last_read_at = db.Column(db.DateTime)
     last_read_at = db.Column(db.DateTime, nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())

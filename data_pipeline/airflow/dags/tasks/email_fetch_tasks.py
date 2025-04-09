@@ -26,8 +26,11 @@ from utils.db_utils import (
     update_last_read_timestamp,
     update_run_status,
 )
+from utils.gcp_logging_utils import setup_gcp_logging
 
-logger = logging.getLogger(__name__)
+# Initialize logger
+logger = setup_gcp_logging("email_fetch_tasks")
+logger.info("Initialized logger for email_fetch_tasks")
 load_dotenv(os.path.join(os.path.dirname(__file__), "/app/.env"))
 
 

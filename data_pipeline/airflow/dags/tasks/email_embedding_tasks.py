@@ -10,9 +10,11 @@ import pandas as pd
 from chromadb.config import Settings
 from dotenv import load_dotenv
 from google.cloud import storage
+from utils.gcp_logging_utils import setup_gcp_logging
 
-# Initialize logging
-logger = logging.getLogger(__name__)
+# Initialize logger
+logger = setup_gcp_logging("email_embedding_tasks")
+logger.info("Initialized logger for email_embedding_tasks")
 LOCAL_TMP_DIR = "/tmp/email_embeddings"
 
 # Move this to the top of the file, before any OpenAI operations

@@ -9,10 +9,12 @@ from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from google.cloud import storage
 from services.storage_service import StorageService
 from utils.airflow_utils import decode_base64_url_safe
+from utils.gcp_logging_utils import setup_gcp_logging
 from utils.preprocessing_utils import EmailPreprocessor
 
-# Initialize logging
-logger = logging.getLogger(__name__)
+# Initialize logger
+logger = setup_gcp_logging("email_preprocess_tasks")
+logger.info("Initialized logger for email_preprocess_tasks")
 
 LOCAL_TMP_DIR = "/tmp/email_preprocessing"
 

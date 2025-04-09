@@ -11,11 +11,11 @@ from airflow.utils.dates import days_ago
 # from tasks.email_automation_task import automate_data_pipeline, fetch_users
 from utils.airflow_utils import failure_callback
 from utils.db_utils import get_db_session
+from utils.gcp_logging_utils import setup_gcp_logging
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+# Initialize logger
+logger = setup_gcp_logging("email_00_automate_pipeline")
+logger.info("Initialized logger for email_00_automate_pipeline")
 
 default_args = {
     "owner": "airflow",

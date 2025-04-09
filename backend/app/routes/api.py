@@ -13,7 +13,7 @@ from sqlalchemy import text
 
 from .. import db
 from ..models import (
-    EmailProcessingSummary,
+    EmailPreprocessingSummary,
     EmailReadTracker,
     EmailRunStatus,
     GoogleToken,
@@ -122,40 +122,53 @@ def get_connected_accounts():
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    accounts_query = (
-        db.session.query(
-            GoogleToken, EmailReadTracker.last_read_at, EmailRunStatus.run_status
-        )
-        .join(
-            EmailReadTracker,
-            (GoogleToken.email == EmailReadTracker.email)
-            & (GoogleToken.user_id == EmailReadTracker.user_id),
-            isouter=True,
-        )
-        .join(
-            EmailRunStatus,
-            (GoogleToken.email == EmailRunStatus.email)
-            & (GoogleToken.user_id == EmailRunStatus.user_id),
-            isouter=True,
-        )
-        .filter(GoogleToken.user_id == user.id)
-        .all()
-    )
-
-    if not accounts_query:
+    # Get all Google tokens for the user
+    google_tokens = GoogleToken.query.filter_by(user_id=user.id).all()
+    if not google_tokens:
         return jsonify({"error": "No connected accounts found"}), 404
 
-    accounts = []
-    for token, last_read, run_status in accounts_query:
-        account_info = {
-            "email": token.email,
-            "last_refresh": last_read.isoformat() if last_read else None,
-            "current_run_status": run_status if run_status else "NO_STATUS",
-            "connected_since": token.created_at.isoformat(),
-        }
-        accounts.append(account_info)
+    # Process each account
+    accounts = {}
+    for token in google_tokens:
+        email = token.email
+        if email not in accounts:
+            # Get run status
+            run_status = EmailRunStatus.query.filter_by(
+                user_id=user.id, email=email
+            ).first()
 
-    return jsonify({"accounts": accounts, "total_accounts": len(accounts)}), 200
+            # Get last read time
+            last_read = (
+                EmailReadTracker.query.filter_by(user_id=user.id, email=email)
+                .order_by(EmailReadTracker.last_read_at.desc())
+                .first()
+            )
+
+            # Get email preprocessing summary
+            summary = (
+                db.session.query(
+                    db.func.sum(EmailPreprocessingSummary.total_emails_processed).label(
+                        "total_emails"
+                    )
+                )
+                .filter_by(user_id=user.id, email=email)
+                .first()
+            )
+
+            accounts[email] = {
+                "email": email,
+                "expires_at": token.expires_at,
+                "run_status": run_status.run_status if run_status else "NO STATUS",
+                "last_read": last_read.last_read_at if last_read else "NO LAST READ",
+                "total_emails_processed": (
+                    summary.total_emails if summary and summary.total_emails else 0
+                ),
+            }
+
+    # Convert dict to sorted list
+    account_list = sorted(accounts.values(), key=lambda x: x["email"])
+
+    return jsonify({"accounts": account_list, "total_accounts": len(account_list)}), 200
 
 
 @api_bp.route("/refreshemails", methods=["POST"])

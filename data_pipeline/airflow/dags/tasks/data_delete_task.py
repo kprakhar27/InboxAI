@@ -8,8 +8,12 @@ from google.cloud import storage
 from sqlalchemy import text
 from tasks.email_embedding_tasks import get_chroma_client
 from utils.db_utils import get_db_session
+from utils.gcp_logging_utils import setup_gcp_logging
 
-logger = logging.getLogger(__name__)
+# Initialize logger
+logger = setup_gcp_logging("data_delete_task")
+logger.info("Initialized logger for data_delete_task")
+
 load_dotenv(os.path.join(os.path.dirname(__file__), "/app/.env"))
 # Instantiate a client
 storage_client = storage.Client()
