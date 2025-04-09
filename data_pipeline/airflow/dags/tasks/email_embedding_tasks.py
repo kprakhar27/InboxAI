@@ -18,7 +18,7 @@ logger.info("Initialized logger for email_embedding_tasks")
 LOCAL_TMP_DIR = "/tmp/email_embeddings"
 
 # Move this to the top of the file, before any OpenAI operations
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), "/app/.env"))
 
 
 def get_openai_client():
