@@ -8,47 +8,61 @@ from HybridRAGPipeline import HybridRAGPipeline
 from RAGPipeline import RAGPipeline
 import os
 from dotenv import load_dotenv
-load_dotenv("/Users/rounakbende/Documents/Git/InboxAI/data_pipeline/.env")
+load_dotenv('/Users/rounakbende/Documents/Git/InboxAI/data_pipeline/.env')
 app = FastAPI(title="RAG Pipeline API")
-# Configuration
-config = RAGConfig(
-    embedding_model="text-embedding-3-small",
-    llm_model="gpt-4o-mini",
-    top_k=5,
-    temperature=0.7,
-    collection_name="learningg951_gmail_com",
-    host="144.24.127.222",
-    port="8000",
-    llm_api_key=os.getenv('OPEN_API_KEY')
-)
 
-# Initialize pipelines
-pipelines = {
-    "crag": CRAGPipeline(config),
-    "rag": RAGPipeline(config),
-    "hybrid": HybridRAGPipeline(config)
-    }
-
-# Request models
+# Request   models
 class QueryRequest(BaseModel):
     question: str
     pipeline_type: str = "crag"
+    #embedding_model: Optional[str] = None
+    llm_model: Optional[str] = "gpt-4o-mini"
+    top_k: int = 3
+    temperature: Optional[float] = None
+    collection_name: str = None
+
 
 class GenerateRequest(BaseModel):
     question: str
     context: List[str]
     pipeline_type: str = "crag"
+    #embedding_model: Optional[str] = None
+    llm_model: Optional[str] = "gpt-4o-mini"
+    top_k: int = 3
+    temperature: Optional[float] = None
+    collection_name: str = None
+
 
 class RerankRequest(BaseModel):
     question: str
     documents: List[str]
+    #embedding_model: Optional[str] = None
+    llm_model: Optional[str] = "gpt-4o-mini"
+    top_k: Optional[int] = 3
+    temperature: Optional[float] = None
+    collection_name: str= None
+
 
 # Common endpoints
 @app.post("/query")
 async def query_pipeline(request: QueryRequest):
     """Execute full RAG pipeline"""
     try:
-        pipeline = pipelines[request.pipeline_type]
+        config = RAGConfig(
+            embedding_model="text-embedding-3-small",
+            llm_model=request.llm_model or "gpt-4o-mini",
+            top_k=request.top_k or 3,
+            temperature=request.temperature or 0.0,
+            collection_name=request.collection_name,
+            host=os.getenv('DB_HOST'),
+            port=os.getenv('CHROMA_PORT'),
+            llm_api_key=os.getenv('OPEN_API_KEY')
+        )
+        pipeline = {
+            "crag": CRAGPipeline(config),
+            "rag": RAGPipeline(config),
+            "hybrid": HybridRAGPipeline(config)
+        }[request.pipeline_type]
         return pipeline.query(request.question)
     except KeyError:
         raise HTTPException(status_code=400, detail="Invalid pipeline type")
@@ -57,8 +71,21 @@ async def query_pipeline(request: QueryRequest):
 async def retrieve_documents(request: QueryRequest):
     """Retrieve documents using semantic search"""
     try:
-        print(request)
-        pipeline = pipelines[request.pipeline_type]
+        config = RAGConfig(
+            embedding_model="text-embedding-3-small",
+            llm_model=request.llm_model or "gpt-4o-mini",
+            top_k=request.top_k or 3,
+            temperature=request.temperature or 0.0,
+            collection_name=request.collection_name,
+            host=os.getenv('DB_HOST'),
+            port=os.getenv('CHROMA_PORT'),
+            llm_api_key=os.getenv('OPEN_API_KEY')
+        )
+        pipeline = {
+            "crag": CRAGPipeline(config),
+            "rag": RAGPipeline(config),
+            "hybrid": HybridRAGPipeline(config)
+        }[request.pipeline_type]
         return {
             "documents": pipeline.semantic_search(request.question),
             "pipeline": request.pipeline_type
@@ -70,7 +97,21 @@ async def retrieve_documents(request: QueryRequest):
 async def generate_answer(request: GenerateRequest):
     """Generate answer with custom context"""
     try:
-        pipeline = pipelines[request.pipeline_type]
+        config = RAGConfig(
+            embedding_model="text-embedding-3-small",
+            llm_model=request.llm_model or "gpt-4o-mini",
+            top_k=request.top_k or 3,
+            temperature=request.temperature or 0.0,
+            collection_name=request.collection_name,
+            host=os.getenv('DB_HOST'),
+            port=os.getenv('CHROMA_PORT'),
+            llm_api_key=os.getenv('OPEN_API_KEY')
+        )
+        pipeline = {
+            "crag": CRAGPipeline(config),
+            "rag": RAGPipeline(config),
+            "hybrid": HybridRAGPipeline(config)
+        }[request.pipeline_type]
         return {
             "response": pipeline.generate_response(request.question, request.context),
             "pipeline": request.pipeline_type
@@ -84,8 +125,21 @@ async def keyword_search(request: QueryRequest):
     """Perform keyword-based search (HybridRAG only)"""
     if request.pipeline_type != "hybrid":
         raise HTTPException(status_code=400, detail="Keyword search only available for Hybrid pipeline")
-    
-    pipeline = pipelines["hybrid"]
+    config = RAGConfig(
+            embedding_model="text-embedding-3-small",
+            llm_model=request.llm_model or "gpt-4o-mini",
+            top_k=request.top_k or 3,
+            temperature=request.temperature or 0.0,
+            collection_name=request.collection_name,
+            host=os.getenv('DB_HOST'),
+            port=int(os.getenv('CHROMA_PORT')),
+            llm_api_key=os.getenv('OPEN_API_KEY')
+        )
+    pipeline = {
+        "crag": CRAGPipeline(config),
+        "rag": RAGPipeline(config),
+        "hybrid": HybridRAGPipeline(config)
+    }[request.pipeline_type]
     state = pipeline.keyword_search({"question": request.question})
     return {
         "keyword_documents": state["keyword_docs"],
@@ -95,7 +149,21 @@ async def keyword_search(request: QueryRequest):
 @app.post("/hybrid/rerank")
 async def rerank_documents(request: RerankRequest):
     """Rerank documents (HybridRAG only)"""
-    pipeline = pipelines["hybrid"]
+    config = RAGConfig(
+            embedding_model=request.embedding_model or "text-embedding-3-small",
+            llm_model=request.llm_model or "gpt-4o-mini",
+            top_k=request.top_k or 3,
+            temperature=request.temperature or 0.0,
+            collection_name=request.collection_name,
+            host=os.getenv('CHROMA_HOST'),
+            port=int(os.getenv('CHROMA_PORT')),
+            llm_api_key=os.getenv('OPEN_API_KEY')
+        )
+    pipeline = {
+        "crag": CRAGPipeline(config),
+        "rag": RAGPipeline(config),
+        "hybrid": HybridRAGPipeline(config)
+    }[request.pipeline_type]
     state = {
         "question": request.question,
         "documents": request.documents,
@@ -111,7 +179,7 @@ async def rerank_documents(request: RerankRequest):
 async def list_available_pipelines():
     """List available pipeline types"""
     return {
-        "available_pipelines": list(pipelines.keys()),
+        "available_pipelines": ["crag", "rag", "hybrid"],
         "description": {
             "crag": "Conditional RAG with query transformation and document grading",
             "hybrid": "Hybrid RAG with keyword/vector search and reranking"
