@@ -56,7 +56,7 @@ def sanitize_collection_name(email: str) -> str:
 def get_chroma_client():
     try:
         chroma_client = chromadb.HttpClient(
-            host=os.getenv("CHROMA_HOST_URL"), port=8000
+            host=os.getenv("CHROMA_HOST_URL"), port=os.getenv("CHROMA_PORT")
         )
         logger.info("Successfully connected to Chroma client.")
         return chroma_client
