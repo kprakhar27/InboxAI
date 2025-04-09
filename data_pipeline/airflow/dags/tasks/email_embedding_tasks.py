@@ -231,7 +231,7 @@ def upsert_embeddings(**context) -> bool:
         if not user_id:
             parts = gcs_uri.replace("gs://", "").split("/")
             # Using index 4 to get 'user123' from gs://bucket_name/processed/data/user123/file.parquet
-            user_id = parts[4] if len(parts) > 4 else "default_user"
+            user_id = parts[2] if len(parts) > 4 else "default_user"
 
         logger.info(f"Upserting embeddings for user {user_id}")
 
