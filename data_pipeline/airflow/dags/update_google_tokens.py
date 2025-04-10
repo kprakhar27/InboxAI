@@ -1,4 +1,6 @@
+import json
 import logging
+import os
 from datetime import datetime, timedelta
 
 from airflow import DAG
@@ -27,6 +29,18 @@ default_args = {
 }
 
 
+def get_oauth_credentials():
+    """Load OAuth credentials from JSON file."""
+    try:
+        cred_path = os.environ.get("CREDENTIAL_PATH_FOR_GMAIL_API", "credentials.json")
+        with open(cred_path) as f:
+            creds = json.load(f)
+        return creds["installed"]["client_id"], creds["installed"]["client_secret"]
+    except Exception as e:
+        logger.error(f"Error loading OAuth credentials: {str(e)}")
+        raise
+
+
 def refresh_google_tokens(**context):
     """
     Refresh Google OAuth tokens that are about to expire.
@@ -35,6 +49,9 @@ def refresh_google_tokens(**context):
     try:
         logger.info("Starting Google token refresh process")
         session = get_db_session()
+
+        # Get Google OAuth credentials from credentials.json
+        client_id, client_secret = get_oauth_credentials()
 
         # Get all tokens that will expire in the next hour
         expiry_threshold = datetime.utcnow() + timedelta(hours=1)
@@ -53,8 +70,8 @@ def refresh_google_tokens(**context):
                     token=token.access_token,
                     refresh_token=token.refresh_token,
                     token_uri="https://oauth2.googleapis.com/token",
-                    client_id=context["var"].value.get("GOOGLE_CLIENT_ID"),
-                    client_secret=context["var"].value.get("GOOGLE_CLIENT_SECRET"),
+                    client_id=client_id,
+                    client_secret=client_secret,
                 )
 
                 if not creds.valid or creds.expired:
