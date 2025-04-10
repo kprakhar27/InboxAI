@@ -78,7 +78,9 @@ def upload_to_chroma(user_id, embedded_data_path, client) -> None:
         df = pd.read_parquet(embedded_data_path)
 
         # Sanitize the user ID
-        collection_name = sanitize_collection_name(user_id)
+        collection_name = sanitize_collection_name(
+            user_id, metadata=None, embedding_function=None
+        )
         logger.info(f"Using collection name: {collection_name} for user: {user_id}")
         collection = client.get_or_create_collection(name=collection_name)
 
