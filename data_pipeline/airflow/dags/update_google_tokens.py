@@ -29,6 +29,40 @@ default_args = {
 }
 
 
+def test_gcp_logging(**context):
+    """Test task to verify GCP logging setup."""
+    try:
+        import google.cloud.logging
+        from google.cloud.logging.handlers import CloudLoggingHandler
+
+        # Print environment info
+        logger.info(f"Testing GCP logging setup...")
+        logger.info(
+            f"GOOGLE_APPLICATION_CREDENTIALS = {os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')}"
+        )
+
+        # Test direct client initialization
+        client = google.cloud.logging.Client()
+        logger.info(f"GCP logging client initialized successfully")
+        logger.info(f"Using GCP project: {client.project}")
+
+        # Test custom handler
+        handler = CloudLoggingHandler(client)
+        test_logger = logging.getLogger("test_logger")
+        test_logger.setLevel(logging.INFO)
+        test_logger.addHandler(handler)
+
+        # Send test messages
+        test_logger.info("TEST MESSAGE 1 - Direct from test logger")
+        logger.info("TEST MESSAGE 2 - From DAG logger")
+
+        return "GCP logging test completed successfully"
+
+    except Exception as e:
+        logger.error(f"GCP logging test failed: {str(e)}")
+        raise
+
+
 def get_oauth_credentials():
     """Load OAuth credentials from JSON file."""
     try:
@@ -135,6 +169,14 @@ with DAG(
         doc="Start of the token refresh pipeline.",
     )
 
+    # Test GCP logging task
+    test_logging = PythonOperator(
+        task_id="test_gcp_logging",
+        python_callable=test_gcp_logging,
+        provide_context=True,
+        doc="Tests GCP logging configuration",
+    )
+
     # Refresh tokens task
     refresh_tokens = PythonOperator(
         task_id="refresh_google_tokens",
@@ -153,6 +195,6 @@ with DAG(
     )
 
     # Define task dependencies
-    start >> refresh_tokens >> send_failure_notification
+    start >> test_logging >> refresh_tokens >> send_failure_notification
 
     logger.info("Google Token Update Pipeline DAG fully initialized")
