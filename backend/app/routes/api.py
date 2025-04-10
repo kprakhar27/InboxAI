@@ -239,7 +239,14 @@ def refresh_emails():
 def remove_email():
     data = request.get_json()
     email = data.get("email")
-    user_id = get_jwt_identity()
+    username = get_jwt_identity()
+
+    # Get the user from database to get the actual user ID
+    user = Users.query.filter_by(username=username).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    user_id = user.id  # This will be the actual UUID
 
     airflow_ip = os.environ.get("AIRFLOW_API_IP")
     airflow_user = os.environ.get("AIRFLOW_API_USER")
@@ -265,7 +272,11 @@ def remove_email():
 
         if response.status_code == 200:
             return (
-                jsonify({"message": "Successfully triggered email removal pipeline"}),
+                jsonify(
+                    {
+                        "message": f"Successfully triggered email removal pipeline, user: {user_id}, email: {email}",
+                    }
+                ),
                 200,
             )
     except Exception as e:

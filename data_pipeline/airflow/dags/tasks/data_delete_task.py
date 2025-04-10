@@ -132,8 +132,6 @@ def delete_from_postgres(**context):
                WHERE user_id = :user_id AND email = :email""",
             """DELETE FROM email_run_status 
                WHERE user_id = :user_id AND email = :email""",
-            """DELETE FROM email_ready_for_processing 
-               WHERE user_id = :user_id AND email = :email""",
         ]
 
         try:
