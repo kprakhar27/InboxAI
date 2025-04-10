@@ -6,7 +6,7 @@ from functools import wraps
 from dotenv import load_dotenv
 from google.cloud import storage
 from sqlalchemy import text
-from tasks.email_embedding_tasks import get_chroma_client
+from tasks.email_embedding_tasks import get_chroma_client, sanitize_collection_name
 from utils.db_utils import get_db_session
 from utils.gcp_logging_utils import setup_gcp_logging
 
@@ -63,62 +63,104 @@ def delete_from_gcp(**context):
 
 
 def delete_embeddings(**context):
+    """
+    Delete embeddings from ChromaDB for a specific user's email.
+    Filters documents where the 'to' field in metadata matches the email address.
+    """
     try:
         dag_run = context["dag_run"]
         conf = dag_run.conf
         email_id = conf.get("email_address")
         user_id = conf.get("user_id")
+
+        logger.info(
+            f"Attempting to delete embeddings for user {user_id} and email {email_id}"
+        )
+
         chroma_client = get_chroma_client()
-        if user_id in chroma_client.list_collections():
-            collection = chroma_client.get_collection(user_id)
-        else:
-            logger.error("Collection not found")
-            raise Exception("Collection not found")
+        collection_name = sanitize_collection_name(user_id)
+
+        # Check if collection exists
+        collections = chroma_client.list_collections()
+        if collection_name not in [col.name for col in collections]:
+            logger.warning(f"Collection {collection_name} not found for user {user_id}")
+            return
+
+        # Get the collection
+        collection = chroma_client.get_collection(name=collection_name)
+
+        # Query documents where 'to' field matches the email_id
         results = collection.get(where={"to": email_id})
-        document_ids = results["ids"]
-        if document_ids:
-            # Delete documents by IDs
-            collection.delete(ids=document_ids)
+
+        if results and results["ids"]:
+            document_count = len(results["ids"])
+            # Delete the matching documents
+            collection.delete(ids=results["ids"])
             logger.info(
-                f"Deleted {len(document_ids)} documents for email_id: {email_id}"
+                f"Successfully deleted {document_count} embeddings for email {email_id} from collection {collection_name}"
             )
         else:
-            logger.info(f"No documents found for email_id: {email_id}")
+            logger.info(
+                f"No embeddings found for email {email_id} in collection {collection_name}"
+            )
+
     except Exception as e:
-        logger.error(f"error in deleting embeddings : {e}")
+        logger.error(f"Error deleting embeddings: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise Exception(f"Failed to delete embeddings: {str(e)}")
 
 
 def delete_from_postgres(**context):
+    """Delete all data related to a user's email from PostgreSQL tables."""
     try:
         dag_run = context["dag_run"]
         conf = dag_run.conf
         email_id = conf.get("email_address")
         user_id = conf.get("user_id")
+
         session = get_db_session()
-        # Attempt to execute the DELETE query
-        query = text(
-            """
-            DELETE FROM google_tokens WHERE user_id = :id AND email = :email
-        """
-        )
 
-        # Execute the DELETE query
-        result = session.execute(
-            query, {"id": user_id, "email": email_id}  # UUID as string
-        )
+        # Define DELETE queries for all relevant tables
+        queries = [
+            """DELETE FROM google_tokens 
+               WHERE user_id = :user_id AND email = :email""",
+            """DELETE FROM email_read_tracker 
+               WHERE user_id = :user_id AND email = :email""",
+            """DELETE FROM email_processing_summary 
+               WHERE user_id = :user_id AND email = :email""",
+            """DELETE FROM email_preprocessing_summary 
+               WHERE user_id = :user_id AND email = :email""",
+            """DELETE FROM email_run_status 
+               WHERE user_id = :user_id AND email = :email""",
+            """DELETE FROM email_ready_for_processing 
+               WHERE user_id = :user_id AND email = :email""",
+        ]
 
-        # Commit the transaction
-        session.commit()
+        try:
+            # Execute each DELETE query
+            for query in queries:
+                result = session.execute(
+                    text(query), {"user_id": user_id, "email": email_id}
+                )
+                logger.info(
+                    f"Deleted {result.rowcount} rows from {query.split('FROM')[1].split('WHERE')[0].strip()}"
+                )
 
-        if result.rowcount > 0:
-            logger.info(f"Deleted user: {email_id} (ID: {user_id})")
-        else:
-            logger.info(f"No user found with ID: {user_id} and username: {email_id}")
+            # Commit all changes
+            session.commit()
+            logger.info(
+                f"Successfully deleted all data for user {user_id} and email {email_id}"
+            )
+
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error deleting data: {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
+
     except Exception as e:
-        # Rollback if there was an error
-        session.rollback()
-        logger.info(f"Error in deleting from postgres: {e}")
+        logger.error(f"Error in delete_from_postgres: {str(e)}")
+        raise
 
     finally:
-        # Close the session
         session.close()
