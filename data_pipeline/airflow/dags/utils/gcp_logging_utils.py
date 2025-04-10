@@ -1,8 +1,12 @@
 import json
 import logging
+import os
 
 import google.cloud.logging
+from dotenv import load_dotenv
 from google.cloud.logging.handlers import CloudLoggingHandler
+
+load_dotenv(os.path.join(os.path.dirname(__file__), "/app/.env"))
 
 
 def setup_gcp_logging(module_name):
@@ -16,8 +20,9 @@ def setup_gcp_logging(module_name):
         logging.Logger: Configured logger instance
     """
     try:
+        credentials_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
         # Create a Cloud Logging client
-        client = google.cloud.logging.Client()
+        client = google.cloud.logging.Client.from_service_account_json(credentials_path)
 
         # Create a cloud logging handler
         handler = CloudLoggingHandler(client, name="inboxai")
