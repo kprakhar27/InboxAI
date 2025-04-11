@@ -3,10 +3,13 @@ import logging
 import os
 from datetime import datetime, timedelta
 
+import google.cloud.logging
 from airflow import DAG
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
 from google.auth.transport.requests import Request
+from google.cloud.logging.handlers import CloudLoggingHandler
+from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 from models_postgres import GoogleToken
 from tasks.email_fetch_tasks import send_failure_email
@@ -42,7 +45,10 @@ def test_gcp_logging(**context):
         )
 
         # Test direct client initialization
-        client = google.cloud.logging.Client()
+        credentials = service_account.Credentials.from_service_account_file(
+            credentials_path
+        )
+        client = google.cloud.logging.Client(credentials=credentials)
         logger.info(f"GCP logging client initialized successfully")
         logger.info(f"Using GCP project: {client.project}")
 
