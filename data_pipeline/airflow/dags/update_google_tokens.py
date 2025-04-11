@@ -45,6 +45,7 @@ def test_gcp_logging(**context):
         )
 
         # Test direct client initialization
+        credentials_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
         credentials = service_account.Credentials.from_service_account_file(
             credentials_path
         )
