@@ -147,7 +147,7 @@ with DAG(
     default_args=default_args,
     description="Updates Google OAuth tokens before expiry",
     schedule_interval="@hourly",
-    start_date=datetime(2024, 1, 1),
+    start_date=datetime.now() - timedelta(days=1),
     catchup=False,
     max_active_runs=1,
     tags=["google", "oauth", "maintenance"],
