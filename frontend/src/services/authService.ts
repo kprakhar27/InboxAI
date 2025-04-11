@@ -1,6 +1,5 @@
 
 const API_URL = "https://backend.inboxai.tech";
-
 interface AuthCredentials {
   username: string;
   password: string;
