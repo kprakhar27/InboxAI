@@ -11,7 +11,9 @@ const Redirect = () => {
   useEffect(() => {
     const handleAuthRedirect = async () => {
       try {
-        await gmailService.saveGoogleToken(window.location.href);
+        await gmailService.saveGoogleToken(
+          window.location.href.replace("#/", "")
+        );
         toast({
           title: "Success",
           description: "Gmail account connected successfully!",
