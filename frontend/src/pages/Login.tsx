@@ -11,10 +11,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock, ArrowRight, ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { authService } from "@/services/authService";
+import { useToast } from "@/components/ui/use-toast";
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
   const [isLogin, setIsLogin] = useState(!location.state?.register);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,6 +26,8 @@ const Login = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
   const validatePasswords = () => {
     if (!isLogin && password !== confirmPassword) {
       setPasswordError("Passwords do not match");
@@ -39,6 +43,7 @@ const Login = () => {
       return;
     }
     try {
+      setIsLoading(true);
       if (showForgotPassword) {
         // Handle forgot password submission
         console.log("Reset password for:", resetEmail);
@@ -59,12 +64,34 @@ const Login = () => {
         if (data.access_token) {
           localStorage.setItem("token", data.access_token);
         }
+        toast({
+          title: isLogin ? "Login successful" : "Registration successful",
+          description: isLogin
+            ? "Welcome back!"
+            : "Your account has been created.",
+        });
         navigate("/");
       } else {
-        console.error("Authentication failed");
+        const errorData = await response
+          .json()
+          .catch(() => ({ message: "An error occurred" }));
+        toast({
+          title: isLogin ? "Login failed" : "Registration failed",
+          description:
+            errorData.message || "Please check your credentials and try again",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Error during authentication:", error);
+      toast({
+        title: "Authentication error",
+        description:
+          "Could not connect to the authentication service. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -93,7 +120,7 @@ const Login = () => {
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
-                    type="email"
+                    type="text"
                     placeholder="Email"
                     className="pl-10"
                     value={resetEmail}
@@ -157,7 +184,7 @@ const Login = () => {
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
-                  type="email"
+                  type="text"
                   placeholder="Email"
                   className="pl-10"
                   value={email}
@@ -223,28 +250,21 @@ const Login = () => {
                 )}
               </div>
             )}
-            <Button type="submit" className="w-full">
-              {isLogin ? "Sign in" : "Create account"}
-              <ArrowRight className="ml-2 h-4 w-4" />
+            <Button
+              type="submit"
+              className="w-full hover:bg-[#b5adff]"
+              disabled={isLoading}
+            >
+              {isLoading
+                ? "Processing..."
+                : isLogin
+                ? "Sign in"
+                : "Create account"}
+              {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
             </Button>
           </form>
 
-          <div className="mt-4">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or continue with
-                </span>
-              </div>
-            </div>
-
-            <Button variant="outline" className="w-full mt-4">
-              Continue with Google
-            </Button>
-
+          <div>
             {isLogin && (
               <Button
                 variant="link"

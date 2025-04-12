@@ -1,0 +1,53 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redirecting...</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f5f7fb;
+        color: #1e293b;
+      }
+      .loader {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #3498db;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+        margin-right: 15px;
+      }
+      .container {
+        display: flex;
+        align-items: center;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="loader"></div>
+      <p>Redirecting to application...</p>
+    </div>
+    
+    <script>
+      // Get the current URL and extract the query parameters
+      const currentUrl = window.location.href;
+      const queryParams = window.location.search;
+      
+      // Redirect to the React app's /redirect route with all query parameters
+      window.location.href = `/#/redirect${queryParams}`;
+    </script>
+  </body>
+</html>
