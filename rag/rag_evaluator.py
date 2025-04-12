@@ -44,25 +44,22 @@ def get_class_from_input(module_name, class_name):
 
 def main():
     print(sys.argv)
-
-    # Get test dataset path from environment
-    test_dataset_path = os.getenv("TEST_DATASET_PATH")
-
-    # Define RAG configuration
-    config = RAGConfig(
-        embedding_model=os.getenv("EMBEDDING_MODEL"),
-        llm_model=os.getenv("LLM_MODEL"),
-        top_k=int(os.getenv("TOP_K")),
-        temperature=float(os.getenv("TEMPERATURE")),
-        collection_name=os.getenv("CHROMA_COLLECTION"),
-        host=os.getenv("CHROMA_HOST"),
-        port=os.getenv("CHROMA_PORT"),
-        llm_api_key=os.getenv("OPENAI_API_KEY"),
-    )
-
-    # Handle different argument scenarios
     if len(sys.argv) == 3:
-        # Original 2-argument scenario (pipeline name and run name)
+        test_dataset_path = os.getenv("TEST_DATASET_PATH")
+        
+        # Define RAG configuration
+        config = RAGConfig(
+            embedding_model=os.getenv("EMBEDDING_MODEL"),
+            llm_model=os.getenv("LLM_MODEL"),
+            top_k=int(os.getenv("TOP_K")),
+            temperature=float(os.getenv("TEMPERATURE")),
+            collection_name=os.getenv("CHROMA_COLLECTION"),
+            host=os.getenv("CHROMA_HOST"),
+            port=os.getenv("CHROMA_PORT"),
+            llm_api_key=os.getenv("OPENAI_API_KEY"),
+            embedding_api_key=os.getenv("EMBEDDING_API_KEY")
+        )
+        
         Pipeline = get_class_from_input(sys.argv[1], sys.argv[1])
         print(Pipeline)
 

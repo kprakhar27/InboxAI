@@ -11,3 +11,4 @@ class RAGConfig:
     host: str
     port: str
     llm_api_key: str
+    embedding_api_key: str

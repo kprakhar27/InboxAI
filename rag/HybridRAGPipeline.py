@@ -128,7 +128,7 @@ class HybridRAGPipeline:
 
     def keyword_search(self, state):
         """Perform keyword-based search"""
-        question = state.question
+        question = state["question"]
         keywords = self.keyword_extractor.invoke({"question": question})
 
         # Query Chroma using the keywords
@@ -141,7 +141,7 @@ class HybridRAGPipeline:
 
     def vector_search(self, state):
         """Perform vector-based search"""
-        question = state.question
+        question = state["question"]
 
         # Get embeddings and search using semantic search
         vector_docs = self.semantic_search(question)
@@ -150,9 +150,9 @@ class HybridRAGPipeline:
 
     def combine_results(self, state):
         """Combine results from keyword and vector search"""
-        question = state.question
-        keyword_docs = state.keyword_docs if hasattr(state, "keyword_docs") else []
-        vector_docs = state.vector_docs if hasattr(state, "vector_docs") else []
+        question = state["question"]
+        keyword_docs = state.get("keyword_docs", [])
+        vector_docs = state.get("vector_docs", [])
 
         # Combine and deduplicate
         all_docs = []
@@ -169,11 +169,11 @@ class HybridRAGPipeline:
 
     def rerank_documents(self, state):
         """Rerank documents using an LLM"""
-        question = state.question
-        documents = state.documents
+        question = state["question"]
+        documents = state["documents"]
 
         if not documents:
-            return {**state.__dict__, "reranked_docs": []}
+            return {**state, "reranked_docs": []}
 
         # Format documents for the reranker
         formatted_docs = "\n\n".join([f"{i}: {doc}" for i, doc in enumerate(documents)])
@@ -196,12 +196,12 @@ class HybridRAGPipeline:
         except:
             reranked_docs = documents
 
-        return {**state.__dict__, "reranked_docs": reranked_docs}
+        return {**state, "reranked_docs": reranked_docs}
 
     def generate(self, state):
         """Generate an answer based on reranked documents"""
-        question = state.question
-        documents = state.reranked_docs if hasattr(state, "reranked_docs") else []
+        question = state["question"]
+        documents = state.get("reranked_docs", [])
 
         if not documents:
             generation = "I don't have enough information to answer this question."
@@ -213,7 +213,7 @@ class HybridRAGPipeline:
             )
 
         return {
-            **state.__dict__,
+            **state,
             "question": question,
             "documents": documents,
             "generation": generation,

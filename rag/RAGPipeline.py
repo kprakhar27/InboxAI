@@ -17,12 +17,14 @@ class RAGPipeline:
         self.config = config
         self.chroma_client = chromadb.HttpClient(host=config.host, port=config.port)
         self.collection = self.chroma_client.get_collection(config.collection_name)
-        self.client = OpenAI(api_key=config.llm_api_key)
-
+        self.client = OpenAI(base_url="https://api.groq.com/openai/v1", api_key=config.llm_api_key)
+        self.embedding_client = OpenAI(api_key=config.embedding_api_key)
+    
     def get_embedding(self, text: str) -> List[float]:
         """Get embeddings using OpenAI API"""
-        response = self.client.embeddings.create(
-            input=text, model=self.config.embedding_model
+        response = self.embedding_client.embeddings.create(
+            input=text,
+            model=self.config.embedding_model
         )
         return response.data[0].embedding
 
