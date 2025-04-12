@@ -18,6 +18,11 @@ from utils.airflow_utils import (
     get_timestamps,
 )
 from utils.db_utils import get_db_session, get_last_read_timestamp
+from utils.gcp_logging_utils import setup_gcp_logging
+
+# Initialize logger
+logger = setup_gcp_logging("email_batch_tasks")
+logger.info("Initialized logger for email_batch_tasks")
 
 logger = logging.getLogger(__name__)
 load_dotenv(os.path.join(os.path.dirname(__file__), "/app/.env"))
@@ -52,7 +57,8 @@ def get_last_read_timestamp_task(**context):
     try:
         session = get_db_session()
         email = context["dag_run"].conf.get("email_address")
-        last_read = get_last_read_timestamp(session, email)
+        user_id = context["dag_run"].conf.get("user_id")
+        last_read = get_last_read_timestamp(session, user_id, email)
         last_read_str = last_read.strftime("%Y-%m-%d %H:%M:%S.%f %Z")
 
         end_timestamp = datetime.now(timezone.utc)
@@ -85,8 +91,9 @@ def choose_processing_path(email, **context) -> str:
     try:
         session = get_db_session()
         email = context["dag_run"].conf.get("email_address")
+        user_id = context["dag_run"].conf.get("user_id")
 
-        last_read = get_last_read_timestamp(session, email)
+        last_read = get_last_read_timestamp(session, user_id, email)
         # Add UTC timezone to last_read
         last_read = last_read.replace(tzinfo=timezone.utc)
         # Create end_timestamp with UTC timezone
@@ -132,7 +139,7 @@ def create_batches(**context):
         gmail_service = GmailService(credentials)
 
         # Step 2: Get time range
-        start_timestamp, end_timestamp = get_timestamps(session, email)
+        start_timestamp, end_timestamp = get_timestamps(session, user_id, email)
 
         # Step 3: Fetch message IDs in time range (reusing fetch_emails)
         message_ids = fetch_emails(gmail_service, start_timestamp, end_timestamp)
@@ -207,8 +214,8 @@ def trigger_email_get_for_batches(dag, **context):
     )
 
     if not batches:
-        logger.error("No email batches found in XCom")
-        raise ValueError("No email batches found to process")
+        logger.info("No email batches found in XCom - completing successfully")
+        return 0
 
     # Log batch info
     logger.info(f"Found {len(batches)} batches for email {email}")

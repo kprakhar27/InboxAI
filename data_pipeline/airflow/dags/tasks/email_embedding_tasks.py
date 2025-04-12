@@ -10,19 +10,30 @@ import pandas as pd
 from chromadb.config import Settings
 from dotenv import load_dotenv
 from google.cloud import storage
+from utils.gcp_logging_utils import setup_gcp_logging
 
-# Initialize logging
-logger = logging.getLogger(__name__)
+# Initialize logger
+logger = setup_gcp_logging("email_embedding_tasks")
+logger.info("Initialized logger for email_embedding_tasks")
 LOCAL_TMP_DIR = "/tmp/email_embeddings"
 
 # Move this to the top of the file, before any OpenAI operations
-load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    raise ValueError("OPENAI_API_KEY environment variable is not set")
+load_dotenv(os.path.join(os.path.dirname(__file__), "/app/.env"))
 
-# Initialize the OpenAI client with the API key
-client = openai.Client(api_key=api_key)
+
+def get_openai_client():
+    """
+    Initialize OpenAI client with API key from environment variable.
+
+    returns:
+        openai.Client: OpenAI client instance.
+    raises:
+        ValueError: If OPENAI_API_KEY environment variable is not set.
+    """
+    api = os.getenv("OPENAI_API_KEY")
+    if not api:
+        raise ValueError("OPENAI_API_KEY environment variable is not set")
+    return openai.Client(api_key=api)
 
 
 def sanitize_collection_name(email: str) -> str:
@@ -45,7 +56,7 @@ def sanitize_collection_name(email: str) -> str:
 def get_chroma_client():
     try:
         chroma_client = chromadb.HttpClient(
-            host=os.getenv("CHROMA_HOST_URL"), port=8000
+            host=os.getenv("CHROMA_HOST_URL"), port=os.getenv("CHROMA_PORT")
         )
         logger.info("Successfully connected to Chroma client.")
         return chroma_client
@@ -69,7 +80,9 @@ def upload_to_chroma(user_id, embedded_data_path, client) -> None:
         # Sanitize the user ID
         collection_name = sanitize_collection_name(user_id)
         logger.info(f"Using collection name: {collection_name} for user: {user_id}")
-        collection = client.get_or_create_collection(name=collection_name)
+        collection = client.get_or_create_collection(
+            name=collection_name, metadata=None, embedding_function=None
+        )
 
         # Upload data to Chroma
         collection.upsert(
@@ -144,6 +157,7 @@ def chunk_text(text: str, max_tokens: int = 8000) -> list[str]:
 
 def generate_embeddings(**context):
     try:
+        client = get_openai_client()
         local_file_path = context["ti"].xcom_pull(key="local_file_path")
         execution_date = context["ds"]
         embedded_data_path = (
@@ -170,14 +184,14 @@ def generate_embeddings(**context):
             if len(chunks) == 1:
                 # Single chunk - return embedding directly
                 return (
-                    openai.embeddings.create(input=text, model="text-embedding-3-small")
+                    client.embeddings.create(input=text, model="text-embedding-3-small")
                     .data[0]
                     .embedding
                 )
             else:
                 # Multiple chunks - average their embeddings
                 chunk_embeddings = [
-                    openai.embeddings.create(
+                    client.embeddings.create(
                         input=chunk, model="text-embedding-3-small"
                     )
                     .data[0]
@@ -219,7 +233,7 @@ def upsert_embeddings(**context) -> bool:
         if not user_id:
             parts = gcs_uri.replace("gs://", "").split("/")
             # Using index 4 to get 'user123' from gs://bucket_name/processed/data/user123/file.parquet
-            user_id = parts[4] if len(parts) > 4 else "default_user"
+            user_id = parts[2] if len(parts) > 4 else "default_user"
 
         logger.info(f"Upserting embeddings for user {user_id}")
 

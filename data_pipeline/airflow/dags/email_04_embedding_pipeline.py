@@ -11,9 +11,11 @@ from tasks.email_embedding_tasks import (
     upsert_embeddings,
 )
 from tasks.email_fetch_tasks import send_failure_email, send_success_email
+from utils.gcp_logging_utils import setup_gcp_logging
 
-# Initialize logging
-logger = logging.getLogger(__name__)
+# Initialize logger
+logger = setup_gcp_logging("email_04_embedding_pipeline")
+logger.info("Initialized logger for email_04_embedding_pipeline")
 
 LOCAL_TMP_DIR = "/tmp/inboxai_embedding"
 

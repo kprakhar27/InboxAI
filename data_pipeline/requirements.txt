@@ -14,5 +14,6 @@ pyarrow>=14.0.0
 pytest>=7.0.0
 html2text==2020.1.16
 beautifulsoup4==4.12.2
-chromadb
+chromadb==0.6.3
 openai
+google-cloud-logging

@@ -54,7 +54,10 @@ def register():
 
             return (
                 jsonify(
-                    {"message": "User registered successfully", "access_token": access_token}
+                    {
+                        "message": "User registered successfully",
+                        "access_token": access_token,
+                    }
                 ),
                 201,
             )

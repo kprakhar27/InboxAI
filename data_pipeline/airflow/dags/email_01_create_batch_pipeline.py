@@ -19,12 +19,11 @@ from utils.airflow_utils import (
     get_email_for_dag_run,
     get_user_id_for_dag_run,
 )
+from utils.gcp_logging_utils import setup_gcp_logging
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+# Initialize logger
+logger = setup_gcp_logging("email_01_create_batch_pipeline")
+logger.info("Initialized logger for email_01_create_batch_pipeline")
 
 default_args = {
     "owner": "airflow",
@@ -43,7 +42,7 @@ with DAG(
     description="Email Fetch Pipeline: Fetches emails and creates batches for preprocessing.",
     schedule_interval=None,
     catchup=False,
-    max_active_runs=1,
+    max_active_runs=4,
     tags=["email", "fetch", "pipeline"],
     params={
         "email_address": "",

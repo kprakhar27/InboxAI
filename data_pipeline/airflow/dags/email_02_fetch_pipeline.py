@@ -16,12 +16,11 @@ from tasks.email_fetch_tasks import (
     validation_task,
 )
 from utils.airflow_utils import failure_callback
+from utils.gcp_logging_utils import setup_gcp_logging
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+# Initialize logger
+logger = setup_gcp_logging("email_02_fetch_pipeline")
+logger.info("Initialized logger for email_02_fetch_pipeline")
 
 default_args = {
     "owner": "airflow",

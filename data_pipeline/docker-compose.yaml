@@ -97,6 +97,13 @@ x-airflow-common: &airflow-common
     THREAD_FOLDER: ${THREAD_FOLDER}
     CREDENTIAL_PATH_FOR_GMAIL_API: ${CREDENTIAL_PATH_FOR_GMAIL_API}
     GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
+
+    # Open AI configuration
+    OPENAI_API_KEY: ${OPENAI_API_KEY}
+
+    # ChromaDB configuration
+    CHROMA_HOST_URL: ${CHROMA_HOST_URL}
+    CHROMA_PORT: ${CHROMA_PORT}
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs

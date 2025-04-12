@@ -39,7 +39,7 @@ class GoogleToken(db.Model):
     __tablename__ = "google_tokens"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False)
     email = db.Column(db.String(120), nullable=False)
     access_token = db.Column(db.String(500), nullable=False)
     refresh_token = db.Column(db.String(500), nullable=False)
@@ -55,7 +55,8 @@ class GoogleToken(db.Model):
 class EmailReadTracker(db.Model):
     __tablename__ = "email_read_tracker"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    email = db.Column(db.String(120), unique=True, nullable=False)
+    user_id = db.Column(UUID(as_uuid=True), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
     second_last_read_at = db.Column(db.DateTime)
     last_read_at = db.Column(db.DateTime, nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
@@ -86,6 +87,7 @@ class EmailProcessingSummary(db.Model):
     __tablename__ = "email_processing_summary"
 
     run_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False)
     email = db.Column(db.String(120), nullable=False)
     total_emails_processed = db.Column(db.Integer, nullable=False)
     total_threads_processed = db.Column(db.Integer, nullable=False)
@@ -98,6 +100,7 @@ class EmailPreprocessingSummary(db.Model):
     __tablename__ = "email_preprocessing_summary"
 
     run_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False)
     email = db.Column(db.String(120), nullable=False)
     total_emails_processed = db.Column(db.Integer, nullable=False)
     total_threads_processed = db.Column(db.Integer, nullable=False)
@@ -106,3 +109,21 @@ class EmailPreprocessingSummary(db.Model):
     failed_emails = db.Column(db.Integer, nullable=False)
     failed_threads = db.Column(db.Integer, nullable=False)
     run_timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+
+run_status_enum = ENUM(
+    "STARTED", "COMPLETED", "FAILED", name="run_status_enum", create_type=True
+)
+
+
+class EmailRunStatus(db.Model):
+    __tablename__ = "email_run_status"
+
+    user_id = db.Column(UUID(as_uuid=True), primary_key=True, nullable=False)
+    email = db.Column(db.String(120), primary_key=True, nullable=False)
+    run_status = db.Column(run_status_enum, nullable=False)
+    updated_at = db.Column(
+        db.DateTime(timezone=True),
+        default=db.func.current_timestamp(),
+        onupdate=db.func.current_timestamp(),
+    )
