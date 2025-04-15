@@ -129,7 +129,6 @@ class EmailRunStatus(db.Model):
         onupdate=db.func.current_timestamp(),
     )
 
-
 class Chat(db.Model):
     __tablename__ = "chats"
     
