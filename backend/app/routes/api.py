@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime
 from os.path import dirname, join
-from random import choice, randint
+from random import choice, randint, random
 from time import sleep, time
 
 import requests
@@ -293,22 +293,19 @@ def get_rag_sources():
     try:
         # Query all RAG sources
         rag_sources = RAG.query.order_by(RAG.rag_name).all()
-        
-        sources = [{
-            "rag_id": str(source.rag_id),
-            "name": source.rag_name
-        } for source in rag_sources]
-        
-        return jsonify({
-            "sources": sources,
-            "total": len(sources)
-        }), 200
-        
+
+        sources = [
+            {"rag_id": str(source.rag_id), "name": source.rag_name}
+            for source in rag_sources
+        ]
+
+        return jsonify({"sources": sources, "total": len(sources)}), 200
+
     except Exception as e:
-        return jsonify({
-            "error": "Failed to retrieve RAG sources",
-            "details": str(e)
-        }), 500
+        return (
+            jsonify({"error": "Failed to retrieve RAG sources", "details": str(e)}),
+            500,
+        )
 
 
 @api_bp.route("/createchat", methods=["POST"])
@@ -316,7 +313,7 @@ def get_rag_sources():
 def create_chat():
     """
     Create a new chat for the authenticated user.
-    
+
     Request body (optional):
     {
         "name": "Custom Chat Name"
@@ -334,27 +331,26 @@ def create_chat():
         chat_name = data.get("name", "New Chat")
 
         # Create new chat
-        new_chat = Chat(
-            user_id=user.id,
-            name=chat_name
-        )
+        new_chat = Chat(user_id=user.id, name=chat_name)
         db.session.add(new_chat)
         db.session.commit()
 
         # Return chat details
-        return jsonify({
-            "chat_id": str(new_chat.chat_id),
-            "name": new_chat.name,
-            "created_at": new_chat.created_at.isoformat()
-        }), 201
+        return (
+            jsonify(
+                {
+                    "chat_id": str(new_chat.chat_id),
+                    "name": new_chat.name,
+                    "created_at": new_chat.created_at.isoformat(),
+                }
+            ),
+            201,
+        )
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({
-            "error": "Failed to create chat",
-            "details": str(e)
-        }), 500
-    
+        return jsonify({"error": "Failed to create chat", "details": str(e)}), 500
+
 
 @api_bp.route("/getchats", methods=["GET"])
 @jwt_required()
@@ -371,40 +367,31 @@ def get_chats():
             return jsonify({"error": "User not found"}), 404
 
         # Query all chats for the user, ordered by creation date (newest first)
-        chats = Chat.query.filter_by(user_id=user.id)\
-                         .order_by(Chat.created_at.desc())\
-                         .all()
+        chats = (
+            Chat.query.filter_by(user_id=user.id).order_by(Chat.created_at.desc()).all()
+        )
 
         # Format response
-        chats_list = [{
-            "chat_id": str(chat.chat_id),
-            "name": chat.name,
-            "created_at": chat.created_at.isoformat()
-        } for chat in chats]
+        chats_list = [
+            {
+                "chat_id": str(chat.chat_id),
+                "name": chat.name,
+                "created_at": chat.created_at.isoformat(),
+            }
+            for chat in chats
+        ]
 
-        return jsonify({
-            "chats": chats_list,
-            "total": len(chats_list)
-        }), 200
+        return jsonify({"chats": chats_list, "total": len(chats_list)}), 200
 
     except Exception as e:
-        return jsonify({
-            "error": "Failed to retrieve chats",
-            "details": str(e)
-        }), 400
-    
+        return jsonify({"error": "Failed to retrieve chats", "details": str(e)}), 400
+
 
 @api_bp.route("/getmessages/<chat_id>", methods=["GET"])
 @jwt_required()
 def get_messages(chat_id):
     """
     Get all messages for a specific chat.
-    
-    Args:
-        chat_id: UUID of the chat to retrieve messages from
-        
-    Returns:
-        List of messages with their metadata
     """
     try:
         # Get user from JWT token
@@ -414,52 +401,60 @@ def get_messages(chat_id):
             return jsonify({"error": "User not found"}), 404
 
         # Verify chat exists and belongs to user
-        chat = Chat.query.filter_by(
-            chat_id=chat_id,
-            user_id=user.id
-        ).first()
+        chat = Chat.query.filter_by(chat_id=chat_id, user_id=user.id).first()
         if not chat:
             return jsonify({"error": "Chat not found or access denied"}), 404
 
         # Query messages for this chat
-        messages = Message.query\
-            .filter_by(chat_id=chat_id)\
-            .order_by(Message.created_at.asc())\
+        messages = (
+            db.session.query(Message)
+            .filter(Message.chat_id == chat_id)
+            .order_by(Message.created_at.asc())
             .all()
+        )
 
-        # Format response
-        messages_list = [{
-            "message_id": str(msg.message_id),
-            "query_hash": msg.query_hash,
-            "response_hash": msg.response_hash,
-            "rag_id": str(msg.rag_id),
-            "response_time_ms": msg.response_time_ms,
-            "feedback": msg.feedback,
-            "created_at": msg.created_at.isoformat()
-        } for msg in messages]
+        # Format response - show original response only if not toxic
+        messages_list = [
+            {
+                "message_id": str(msg.message_id),
+                "query": msg.query,
+                "response": (
+                    "I apologize, but I cannot provide this response as it may contain inappropriate content."
+                    if msg.is_toxic
+                    else msg.response
+                ),
+                "rag_id": str(msg.rag_id),
+                "response_time_ms": msg.response_time_ms,
+                "feedback": msg.feedback,
+                "is_toxic": msg.is_toxic,
+                "created_at": msg.created_at.isoformat(),
+            }
+            for msg in messages
+        ]
 
-        return jsonify({
-            "chat_id": chat_id,
-            "messages": messages_list,
-            "total": len(messages_list)
-        }), 200
+        return (
+            jsonify(
+                {
+                    "chat_id": chat_id,
+                    "messages": messages_list,
+                    "total": len(messages_list),
+                }
+            ),
+            200,
+        )
 
     except ValueError:
-        return jsonify({
-            "error": "Invalid chat ID format"
-        }), 400
+        return jsonify({"error": "Invalid chat ID format"}), 400
     except Exception as e:
-        return jsonify({
-            "error": "Failed to retrieve messages",
-            "details": str(e)
-        }), 400
-    
+        return jsonify({"error": "Failed to retrieve messages", "details": str(e)}), 400
+
+
 @api_bp.route("/inferencefeedback", methods=["POST"])
 @jwt_required()
 def record_inference_feedback():
     """
     Record user feedback on a chat message response.
-    
+
     Request body:
     {
         "message_id": "uuid-string",
@@ -476,46 +471,47 @@ def record_inference_feedback():
         # Validate request data
         data = request.get_json()
         if not data or "message_id" not in data or "feedback" not in data:
-            return jsonify({
-                "error": "Missing required fields",
-                "details": "message_id and feedback are required"
-            }), 400
+            return (
+                jsonify(
+                    {
+                        "error": "Missing required fields",
+                        "details": "message_id and feedback are required",
+                    }
+                ),
+                400,
+            )
 
         message_id = data["message_id"]
         feedback = bool(data["feedback"])
 
         # Get message and verify ownership
         message = Message.query.filter_by(
-            message_id=message_id,
-            user_id=user.id
+            message_id=message_id, user_id=user.id
         ).first()
-        
+
         if not message:
-            return jsonify({
-                "error": "Message not found or access denied"
-            }), 404
+            return jsonify({"error": "Message not found or access denied"}), 404
 
         # Update feedback
         message.feedback = feedback
         db.session.commit()
 
-        return jsonify({
-            "message": "Feedback recorded successfully",
-            "message_id": str(message_id),
-            "feedback": feedback
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "Feedback recorded successfully",
+                    "message_id": str(message_id),
+                    "feedback": feedback,
+                }
+            ),
+            200,
+        )
 
     except ValueError as ve:
-        return jsonify({
-            "error": "Invalid input format",
-            "details": str(ve)
-        }), 400
+        return jsonify({"error": "Invalid input format", "details": str(ve)}), 400
     except Exception as e:
         db.session.rollback()
-        return jsonify({
-            "error": "Failed to record feedback",
-            "details": str(e)
-        }), 400
+        return jsonify({"error": "Failed to record feedback", "details": str(e)}), 400
 
 
 @api_bp.route("/getinference", methods=["POST"])
@@ -523,7 +519,7 @@ def record_inference_feedback():
 def get_inference():
     """
     Process a query and return a dummy chatbot response.
-    
+
     Request body:
     {
         "query": "text of the question",
@@ -541,16 +537,18 @@ def get_inference():
         # Validate request data
         data = request.get_json()
         if not data or not all(k in data for k in ["query", "chat_id", "rag_id"]):
-            return jsonify({
-                "error": "Missing required fields",
-                "details": "query, chat_id, and rag_id are required"
-            }), 400
+            return (
+                jsonify(
+                    {
+                        "error": "Missing required fields",
+                        "details": "query, chat_id, and rag_id are required",
+                    }
+                ),
+                400,
+            )
 
         # Verify chat exists and belongs to user
-        chat = Chat.query.filter_by(
-            chat_id=data["chat_id"],
-            user_id=user.id
-        ).first()
+        chat = Chat.query.filter_by(chat_id=data["chat_id"], user_id=user.id).first()
         if not chat:
             return jsonify({"error": "Chat not found or access denied"}), 404
 
@@ -561,18 +559,28 @@ def get_inference():
 
         # Start timing
         start_time = time()
-        
-        # Generate dummy response
+
+        # Generate dummy response and random toxicity
         dummy_responses = [
             "Based on your email history, the last meeting was about project updates.",
             "I found an email about that topic from last week. It mentioned deadlines.",
             "According to recent emails, this was discussed in yesterday's team sync.",
             "Your email thread from March 15th covered these points in detail.",
-            "I see several emails about this topic in your inbox from different team members."
+            "I see several emails about this topic in your inbox from different team members.",
         ]
-        sleep(randint(1, 5))
+        sleep(randint(1, 3))
         response = choice(dummy_responses)
-        
+
+        # Random toxicity check (20% chance of being toxic)
+        is_toxic = random() < 0.2
+
+        # If toxic, store original response but send safe message
+        displayed_response = (
+            "I apologize, but I cannot provide this response as it may contain inappropriate content."
+            if is_toxic
+            else response
+        )
+
         # Calculate response time
         response_time_ms = int((time() - start_time) * 1000)
 
@@ -581,35 +589,51 @@ def get_inference():
             chat_id=data["chat_id"],
             user_id=user.id,
             rag_id=data["rag_id"],
-            response_time_ms=response_time_ms
+            query=data["query"],
+            response=response,  # Store original response
+            response_time_ms=response_time_ms,
+            is_toxic=is_toxic,
+            toxicity_response={
+                "toxicity_score": 0.8 if is_toxic else 0.1,
+                "categories": {
+                    "profanity": 0.7 if is_toxic else 0.1,
+                    "threat": 0.3 if is_toxic else 0.0,
+                    "insult": 0.6 if is_toxic else 0.1,
+                    "identity_attack": 0.2 if is_toxic else 0.0,
+                },
+                "flagged_terms": ["term1", "term2"] if is_toxic else [],
+                "recommendation": (
+                    "Content filtered due to policy violation." if is_toxic else None
+                ),
+            },
         )
-        
-        # Set query and response hashes
-        message.set_query(data["query"])
-        message.set_response(response)
 
         # Save to database
         db.session.add(message)
         db.session.commit()
 
-        # Return response
-        return jsonify({
-            "message_id": str(message.message_id),
-            "response": response,
-            "rag_id": str(message.rag_id),
-            "query_hash": message.query_hash,
-            "response_hash": message.response_hash,
-            "response_time_ms": message.response_time_ms
-        }), 200
+        # Return response (with safe message if toxic)
+        return (
+            jsonify(
+                {
+                    "message_id": str(message.message_id),
+                    "response": displayed_response,
+                    "rag_id": str(message.rag_id),
+                    "query": message.query,
+                    "response_time_ms": message.response_time_ms,
+                    "is_toxic": message.is_toxic,
+                }
+            ),
+            200,
+        )
 
     except ValueError as ve:
-        return jsonify({
-            "error": "Invalid input format",
-            "details": str(ve)
-        }), 400
+        return jsonify({"error": "Invalid input format", "details": str(ve)}), 400
     except Exception as e:
         db.session.rollback()
-        return jsonify({
-            "error": "Failed to process inference request",
-            "details": str(e)
-        }), 400
+        return (
+            jsonify(
+                {"error": "Failed to process inference request", "details": str(e)}
+            ),
+            400,
+        )
