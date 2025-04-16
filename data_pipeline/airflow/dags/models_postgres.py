@@ -97,6 +97,19 @@ class EmailProcessingSummary(db.Model):
     run_timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
 
 
+class EmailEmbeddingSummary(db.Model):
+    __tablename__ = "email_embedding_summary"
+
+    run_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
+    total_emails_embedded = db.Column(db.Integer, nullable=False)
+    total_threads_embedded = db.Column(db.Integer, nullable=False)
+    failed_emails = db.Column(db.Integer, nullable=False)
+    failed_threads = db.Column(db.Integer, nullable=False)
+    run_timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+
 class EmailPreprocessingSummary(db.Model):
     __tablename__ = "email_preprocessing_summary"
 

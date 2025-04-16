@@ -10,6 +10,7 @@ import pandas as pd
 from chromadb.config import Settings
 from dotenv import load_dotenv
 from google.cloud import storage
+from utils.db_utils import add_embedding_summary
 from utils.gcp_logging_utils import setup_gcp_logging
 
 # Initialize logger
@@ -211,6 +212,29 @@ def generate_embeddings(**context):
         os.makedirs(os.path.dirname(embedded_data_path), exist_ok=True)
         df.to_parquet(embedded_data_path)
         logger.info(f"Successfully saved embeddings to {embedded_data_path}")
+
+        # Publish metrics
+        total_emails = len(df)
+        total_threads = 0
+        successful_emails = df["email_id"].nunique()
+        successful_threads = 0
+        failed_emails = total_emails - successful_emails
+        failed_threads = 0
+
+        dag_run = context["dag_run"]
+        conf = dag_run.conf
+        user_id = conf.get("user_id")
+
+        add_embedding_summary(
+            run_id=execution_date,
+            user_id=user_id,
+            total_emails_embedded=total_emails,
+            total_threads_embedded=total_threads,
+            successful_emails=successful_emails,
+            successful_threads=successful_threads,
+            failed_emails=failed_emails,
+            failed_threads=failed_threads,
+        )
 
         context["ti"].xcom_push(key="embedded_data_path", value=embedded_data_path)
         return True

@@ -9,6 +9,7 @@ from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from google.cloud import storage
 from services.storage_service import StorageService
 from utils.airflow_utils import decode_base64_url_safe
+from utils.db_utils import add_preprocessing_summary
 from utils.gcp_logging_utils import setup_gcp_logging
 from utils.preprocessing_utils import EmailPreprocessor
 
@@ -84,6 +85,28 @@ def preprocess_emails(**context):
         logger.info("Applying preprocessing steps to emails")
         processed_df = preprocessor.preprocess(emails_df)
         logger.info(f"Successfully preprocessed {len(processed_df)} emails")
+
+        # Publish metrics
+        logger.info("Publishing metrics for email preprocessing")
+        total_emails = len(emails_df)
+        total_threads = 0
+        successful_emails = len(processed_df)
+        successful_threads = 0
+        failed_emails = total_emails - successful_emails
+        failed_threads = 0
+
+        user_id = context["dag_run"].conf.get("user_id", Variable.get("user_id"))
+        add_preprocessing_summary(
+            run_id=execution_date,
+            user_id=user_id,
+            total_emails_processed=total_emails,
+            total_threads_processed=total_threads,
+            successful_emails=successful_emails,
+            successful_threads=successful_threads,
+            failed_emails=failed_emails,
+            failed_threads=failed_threads,
+            run_timestamp=execution_date,
+        )
 
         # Save processed data
         logger.info(f"Saving processed data to {processed_data_path}")

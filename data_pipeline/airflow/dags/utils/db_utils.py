@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from dotenv import load_dotenv
 from models_postgres import (
+    EmailEmbeddingSummary,
     EmailPreprocessingSummary,
     EmailProcessingSummary,
     EmailReadTracker,
@@ -135,30 +136,6 @@ def add_unique_timestamps(session, timestamp_email_map):
         logger.error(f"Error adding unique timestamps and email addresses: {e}")
 
 
-def add_processing_summary(
-    session, email, total_emails, total_threads, failed_emails, failed_threads
-):
-    """Add a processing summary record to the EmailProcessingSummary table."""
-    try:
-        logger.info(f"Adding processing summary for email: {email}")
-        summary_record = EmailProcessingSummary(
-            email=email,
-            total_emails_processed=total_emails,
-            total_threads_processed=total_threads,
-            failed_emails=failed_emails,
-            failed_threads=failed_threads,
-            run_timestamp=datetime.now(),
-        )
-        session.add(summary_record)
-        session.commit()
-        logger.info(
-            "Processing summary added successfully. Database commit successful."
-        )
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error adding processing summary for email {email}: {e}")
-
-
 def fetch_ready_for_processing(session, email=None):
     """Fetch records that are ready for preprocessing. Optionally filter by email."""
     try:
@@ -219,4 +196,59 @@ def add_preprocessing_summary(
     except Exception as e:
         session.rollback()
         logger.error(f"Error adding preprocessing summary for email {email}: {e}")
+        return False
+
+
+def add_processing_summary(
+    session, user_id, email, total_emails, total_threads, failed_emails, failed_threads
+):
+    """
+    Add a processing summary record to the EmailProcessingSummary table.
+    """
+    try:
+        logger.info(f"Adding processing summary for email: {email}")
+        summary = EmailProcessingSummary(
+            user_id=user_id,
+            email=email,
+            total_emails_processed=total_emails,
+            total_threads_processed=total_threads,
+            failed_emails=failed_emails,
+            failed_threads=failed_threads,
+        )
+        session.add(summary)
+        session.commit()
+        logger.info("Processing summary added successfully")
+        return True
+
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error adding processing summary for email {email}: {str(e)}")
+        return False
+
+
+def add_embedding_summary(
+    session, user_id, email, total_emails, total_threads, failed_emails, failed_threads
+):
+    """
+    Add an embedding summary record to the EmailEmbeddingSummary table.
+    """
+
+    try:
+        logger.info(f"Adding embedding summary for email: {email}")
+        summary = EmailEmbeddingSummary(
+            user_id=user_id,
+            email=email,
+            total_emails_embedded=total_emails,
+            total_threads_embedded=total_threads,
+            failed_emails=failed_emails,
+            failed_threads=failed_threads,
+        )
+        session.add(summary)
+        session.commit()
+        logger.info("Embedding summary added successfully")
+        return True
+
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error adding embedding summary for email {email}: {str(e)}")
         return False
