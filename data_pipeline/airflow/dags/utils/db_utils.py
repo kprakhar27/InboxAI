@@ -179,7 +179,7 @@ def add_preprocessing_summary(
 ):
     """Add a preprocessing summary record to the database."""
     try:
-        summary = EmailProcessingSummary(
+        summary = EmailPreprocessingSummary(
             run_id=run_id,
             user_id=user_id,
             email=email,
