@@ -95,7 +95,7 @@ def preprocess_emails(**context):
         failed_emails = total_emails - successful_emails
         failed_threads = 0
 
-        user_id = context["dag_run"].conf.get("user_id", Variable.get("user_id"))
+        user_id = context["dag_run"].conf.get("user_id")
         add_preprocessing_summary(
             run_id=execution_date,
             user_id=user_id,
