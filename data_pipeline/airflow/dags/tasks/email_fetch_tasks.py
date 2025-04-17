@@ -432,7 +432,11 @@ def trigger_preprocessing_pipeline(**context):
     logger.info("Starting trigger_preprocessing_pipeline")
     try:
         gcs_uri = context["ti"].xcom_pull(key="gcs_uri")
-        conf = {"gcs_uri": gcs_uri}
+        conf = {
+            "gcs_uri": gcs_uri,
+            "email": context["dag_run"].conf.get("email_address"),
+            "user_id": context["dag_run"].conf.get("user_id"),
+        }
         trigger_task = TriggerDagRunOperator(
             task_id="trigger_embedding_dag",
             trigger_dag_id="email_preprocessing_pipeline",

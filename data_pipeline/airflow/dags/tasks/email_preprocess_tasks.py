@@ -203,6 +203,8 @@ def trigger_embedding_pipeline(**context):
             conf={
                 "execution_date": execution_date,
                 "processed_gcs_uri": processed_gcs_uri,
+                "user_id": context["dag_run"].conf.get("user_id"),
+                "email": context["dag_run"].conf.get("email"),
             },
             reset_dag_run=True,
             wait_for_completion=False,
