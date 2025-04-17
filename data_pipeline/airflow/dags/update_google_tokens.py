@@ -82,20 +82,21 @@ def get_oauth_credentials():
         raise
 
 
-def refresh_google_tokens(**context):
+def refresh_google_tokens():
     """
     Refresh Google OAuth tokens that are about to expire.
     Updates the tokens in the database with new access tokens and expiry times.
     """
+    session = None
     try:
         logger.info("Starting Google token refresh process")
         session = get_db_session()
 
-        # Get Google OAuth credentials from credentials.json
+        # Get Google OAuth credentials
         client_id, client_secret = get_oauth_credentials()
 
-        # Get all tokens that will expire in the next hour
-        expiry_threshold = datetime.utcnow() + timedelta(hours=1)
+        # Get tokens expiring in next hour using timezone-aware comparison
+        expiry_threshold = datetime.now(datetime.timezone.utc) + timedelta(hours=1)
         google_tokens = (
             session.query(GoogleToken)
             .filter(GoogleToken.expires_at <= expiry_threshold)
@@ -119,11 +120,19 @@ def refresh_google_tokens(**context):
                     logger.info(f"Refreshing token for email: {token.email}")
                     creds.refresh(Request())
 
+                    # Calculate new expiry time properly
+                    new_expiry = datetime.fromtimestamp(
+                        creds.expiry.timestamp()
+                    ).replace(tzinfo=datetime.timezone.utc)
+
                     # Update token in database
                     token.access_token = creds.token
-                    token.expires_at = datetime.utcnow() + timedelta(
-                        seconds=creds.expiry.timestamp() - datetime.utcnow().timestamp()
-                    )
+                    token.expires_at = new_expiry
+
+                    # Force update of updated_at timestamp
+                    token.updated_at = datetime.now(datetime.timezone.utc)
+
+                    session.add(token)
                     logger.info(
                         f"Successfully refreshed token for email: {token.email}"
                     )
