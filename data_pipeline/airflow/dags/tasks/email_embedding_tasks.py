@@ -10,7 +10,7 @@ import pandas as pd
 from chromadb.config import Settings
 from dotenv import load_dotenv
 from google.cloud import storage
-from utils.db_utils import add_embedding_summary
+from utils.db_utils import add_embedding_summary, get_db_session
 from utils.gcp_logging_utils import setup_gcp_logging
 
 # Initialize logger
@@ -224,14 +224,13 @@ def generate_embeddings(**context):
         dag_run = context["dag_run"]
         conf = dag_run.conf
         user_id = conf.get("user_id")
+        email = conf.get("email")
 
         add_embedding_summary(
-            run_id=execution_date,
             user_id=user_id,
+            email=email,
             total_emails_embedded=total_emails,
             total_threads_embedded=total_threads,
-            successful_emails=successful_emails,
-            successful_threads=successful_threads,
             failed_emails=failed_emails,
             failed_threads=failed_threads,
         )

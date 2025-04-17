@@ -9,7 +9,7 @@ from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from google.cloud import storage
 from services.storage_service import StorageService
 from utils.airflow_utils import decode_base64_url_safe
-from utils.db_utils import add_preprocessing_summary
+from utils.db_utils import add_preprocessing_summary, get_db_session
 from utils.gcp_logging_utils import setup_gcp_logging
 from utils.preprocessing_utils import EmailPreprocessor
 
@@ -95,23 +95,28 @@ def preprocess_emails(**context):
         failed_emails = total_emails - successful_emails
         failed_threads = 0
 
+        # Intialize database session
+        session = get_db_session()
+
         user_id = context["dag_run"].conf.get("user_id")
+        email = context["dag_run"].conf.get("email")
         add_preprocessing_summary(
-            run_id=execution_date,
+            session,
             user_id=user_id,
+            email=email,
             total_emails_processed=total_emails,
             total_threads_processed=total_threads,
-            successful_emails=successful_emails,
-            successful_threads=successful_threads,
             failed_emails=failed_emails,
             failed_threads=failed_threads,
-            run_timestamp=execution_date,
         )
 
         # Save processed data
         logger.info(f"Saving processed data to {processed_data_path}")
         processed_df.to_parquet(processed_data_path, index=False)
         logger.info(f"Successfully saved processed data to {processed_data_path}")
+
+        # Close the session
+        session.close()
 
         # Push metadata to XCom
         context["ti"].xcom_push(
