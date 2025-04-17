@@ -184,6 +184,7 @@ class Message(db.Model):
     rag_id = db.Column(UUID(as_uuid=True), db.ForeignKey("rag.rag_id"), nullable=False)
     response_time_ms = db.Column(db.Integer)
     feedback = db.Column(db.Boolean)
+    context = db.Column(db.Text, nullable=False)
     is_toxic = db.Column(db.Boolean, default=False)
     toxicity_response = db.Column(JSONB)
     created_at = db.Column(

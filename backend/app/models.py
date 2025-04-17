@@ -150,6 +150,7 @@ class RAG(db.Model):
 
     rag_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     rag_name = db.Column(db.String(255), nullable=False)
+    is_available = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(
         db.DateTime(timezone=True), default=db.func.current_timestamp()
     )
@@ -171,6 +172,7 @@ class Message(db.Model):
     rag_id = db.Column(UUID(as_uuid=True), db.ForeignKey("rag.rag_id"), nullable=False)
     response_time_ms = db.Column(db.Integer)
     feedback = db.Column(db.Boolean)
+    context = db.Column(db.Text, nullable=False)
     is_toxic = db.Column(db.Boolean, default=False)
     toxicity_response = db.Column(JSONB)
     created_at = db.Column(

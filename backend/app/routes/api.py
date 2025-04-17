@@ -292,7 +292,9 @@ def get_rag_sources():
     """
     try:
         # Query all RAG sources
-        rag_sources = RAG.query.order_by(RAG.rag_name).all()
+        rag_sources = (
+            RAG.query.filter_by(is_available=True).order_by(RAG.rag_name).all()
+        )
 
         sources = [
             {"rag_id": str(source.rag_id), "name": source.rag_name}
