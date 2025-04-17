@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import google.cloud.logging
 from airflow import DAG
@@ -95,8 +95,8 @@ def refresh_google_tokens():
         # Get Google OAuth credentials
         client_id, client_secret = get_oauth_credentials()
 
-        # Get tokens expiring in next hour using timezone-aware comparison
-        expiry_threshold = datetime.now(datetime.timezone.utc) + timedelta(hours=1)
+        # Get tokens expiring in next hour using UTC
+        expiry_threshold = datetime.now(timezone.utc) + timedelta(hours=1)
         google_tokens = (
             session.query(GoogleToken)
             .filter(GoogleToken.expires_at <= expiry_threshold)
@@ -120,17 +120,15 @@ def refresh_google_tokens():
                     logger.info(f"Refreshing token for email: {token.email}")
                     creds.refresh(Request())
 
-                    # Calculate new expiry time properly
+                    # Calculate new expiry time properly using UTC
                     new_expiry = datetime.fromtimestamp(
-                        creds.expiry.timestamp()
-                    ).replace(tzinfo=datetime.timezone.utc)
+                        creds.expiry.timestamp(), tz=timezone.utc
+                    )
 
                     # Update token in database
                     token.access_token = creds.token
                     token.expires_at = new_expiry
-
-                    # Force update of updated_at timestamp
-                    token.updated_at = datetime.now(datetime.timezone.utc)
+                    token.updated_at = datetime.now(timezone.utc)
 
                     session.add(token)
                     logger.info(
