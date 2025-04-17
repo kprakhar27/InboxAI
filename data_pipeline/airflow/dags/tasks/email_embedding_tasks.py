@@ -226,7 +226,10 @@ def generate_embeddings(**context):
         user_id = conf.get("user_id")
         email = conf.get("email")
 
+        session = get_db_session()
+
         add_embedding_summary(
+            session=session,
             user_id=user_id,
             email=email,
             total_emails_embedded=total_emails,
