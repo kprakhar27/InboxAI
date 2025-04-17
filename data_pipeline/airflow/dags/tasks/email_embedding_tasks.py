@@ -216,7 +216,7 @@ def generate_embeddings(**context):
         # Publish metrics
         total_emails = len(df)
         total_threads = 0
-        successful_emails = len(df)
+        successful_emails = df["embeddings"].notnull().sum()
         successful_threads = 0
         failed_emails = total_emails - successful_emails
         failed_threads = 0
