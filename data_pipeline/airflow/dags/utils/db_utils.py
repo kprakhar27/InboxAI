@@ -221,7 +221,13 @@ def add_processing_summary(
 
 
 def add_embedding_summary(
-    session, user_id, email, total_emails, total_threads, failed_emails, failed_threads
+    session,
+    user_id,
+    email,
+    total_emails_embedded,
+    total_threads_embedded,
+    failed_emails,
+    failed_threads,
 ):
     """
     Add an embedding summary record to the EmailEmbeddingSummary table.
@@ -232,8 +238,8 @@ def add_embedding_summary(
         summary = EmailEmbeddingSummary(
             user_id=user_id,
             email=email,
-            total_emails_embedded=total_emails,
-            total_threads_embedded=total_threads,
+            total_emails_embedded=total_emails_embedded,
+            total_threads_embedded=total_threads_embedded,
             failed_emails=failed_emails,
             failed_threads=failed_threads,
         )
