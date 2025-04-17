@@ -88,6 +88,9 @@ def refresh_google_tokens():
     Updates the tokens in the database with new access tokens and expiry times.
     """
     session = None
+    success_count = 0
+    failed_count = 0
+
     try:
         logger.info("Starting Google token refresh process")
         session = get_db_session()
@@ -116,34 +119,32 @@ def refresh_google_tokens():
                     client_secret=client_secret,
                 )
 
-                if not creds.valid or creds.expired:
-                    logger.info(f"Refreshing token for email: {token.email}")
-                    creds.refresh(Request())
+                # Refresh token
+                creds.refresh(Request())
 
-                    # Calculate new expiry time properly using UTC
-                    new_expiry = datetime.fromtimestamp(
-                        creds.expiry.timestamp(), tz=timezone.utc
-                    )
+                # Update token in database with UTC timestamps
+                token.access_token = creds.token
+                token.expires_at = datetime.fromtimestamp(
+                    creds.expiry.timestamp(), tz=timezone.utc
+                )
+                token.updated_at = datetime.now(timezone.utc)
 
-                    # Update token in database
-                    token.access_token = creds.token
-                    token.expires_at = new_expiry
-                    token.updated_at = datetime.now(timezone.utc)
-
-                    session.add(token)
-                    logger.info(
-                        f"Successfully refreshed token for email: {token.email}"
-                    )
+                session.add(token)
+                success_count += 1
+                logger.info(f"Successfully refreshed token for email: {token.email}")
 
             except Exception as e:
+                failed_count += 1
                 logger.error(
                     f"Error refreshing token for email {token.email}: {str(e)}"
                 )
                 continue
 
-        # Commit all changes
+        # Commit all changes outside the loop
         session.commit()
-        logger.info("Successfully completed token refresh process")
+        logger.info(
+            f"Token refresh completed. Success: {success_count}, Failed: {failed_count}"
+        )
 
     except Exception as e:
         logger.error(f"Database error in token refresh: {str(e)}")
