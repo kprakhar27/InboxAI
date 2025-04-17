@@ -171,8 +171,6 @@ def add_preprocessing_summary(
     email,
     total_emails_processed,
     total_threads_processed,
-    successful_emails,
-    successful_threads,
     failed_emails,
     failed_threads,
 ):
