@@ -1,5 +1,7 @@
+import importlib
 import json
 import os
+import sys
 from datetime import datetime
 from os.path import dirname, join
 from random import choice, randint, random
@@ -16,6 +18,8 @@ from sqlalchemy import text
 from .. import db
 from ..models import *
 from .get_flow import get_flow
+import openai
+from ..rag.RAGConfig import RAGConfig
 
 dotenv_path = join(dirname(__file__), ".env")
 load_dotenv(dotenv_path)
@@ -29,6 +33,38 @@ else:
 
 flow = get_flow()
 
+def get_class_from_input(module_path: str, class_name: str):
+    """
+    Dynamically load a class from a given file path.
+    
+    Args:
+        module_path: str – full path to the .py file
+        class_name: str – class name defined in that module
+
+    Returns:
+        class object
+    """
+    print(f"Attempting to load class '{class_name}' from {module_path}")
+    module_name = os.path.splitext(os.path.basename(module_path))[0]  # e.g., RAGConfig
+    print(f"Module name: {module_name}")
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+
+    if spec is None or spec.loader is None:
+        print(f"Error: Could not load spec for {module_path}")
+        raise ImportError(f"Could not load spec for {module_path}")
+
+    print(f"Successfully loaded spec for {module_name}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    print(f"Executing module {module_name}")
+    spec.loader.exec_module(module)
+
+    if not hasattr(module, class_name):
+        print(f"Error: Class '{class_name}' not found in {module_path}")
+        raise ImportError(f"Class '{class_name}' not found in {module_path}")
+
+    print(f"Successfully loaded class '{class_name}' from {module_path}")
+    return getattr(module, class_name)
 
 @api_bp.route("/redirect", methods=["GET", "POST"])
 def redirect_url():
@@ -528,15 +564,23 @@ def get_inference():
     }
     """
     try:
+        print("Starting get_inference function")
+        
         # Get user from JWT token
         username = get_jwt_identity()
+        print(f"Authenticated username: {username}")
+        
         user = Users.query.filter_by(username=username).first()
         if not user:
+            print("User not found")
             return jsonify({"error": "User not found"}), 404
 
         # Validate request data
         data = request.get_json()
+        print(f"Request data: {data}")
+        
         if not data or not all(k in data for k in ["query", "chat_id", "rag_id"]):
+            print("Missing required fields in request data")
             return (
                 jsonify(
                     {
@@ -550,39 +594,85 @@ def get_inference():
         # Verify chat exists and belongs to user
         chat = Chat.query.filter_by(chat_id=data["chat_id"], user_id=user.id).first()
         if not chat:
+            print(f"Chat not found or access denied for chat_id: {data['chat_id']}")
             return jsonify({"error": "Chat not found or access denied"}), 404
 
         # Verify RAG source exists
         rag_source = RAG.query.filter_by(rag_id=data["rag_id"]).first()
         if not rag_source:
+            print(f"RAG source not found for rag_id: {data['rag_id']}")
             return jsonify({"error": "RAG source not found"}), 404
 
         # Start timing
         start_time = time()
+        print("Started timing for inference")
 
-        # Generate dummy response and random toxicity
-        dummy_responses = [
-            "Based on your email history, the last meeting was about project updates.",
-            "I found an email about that topic from last week. It mentioned deadlines.",
-            "According to recent emails, this was discussed in yesterday's team sync.",
-            "Your email thread from March 15th covered these points in detail.",
-            "I see several emails about this topic in your inbox from different team members.",
-        ]
-        sleep(randint(1, 3))
-        response = choice(dummy_responses)
+        messages = (
+            db.session.query(Message).filter_by(chat_id=data["chat_id"], user_id=user.id)
+            .order_by(Message.created_at.desc())
+            .limit(3)
+            .all()
+        )
+        print(f"Retrieved messages: {messages}")
 
-        # Random toxicity check (20% chance of being toxic)
-        is_toxic = random() < 0.2
+        # Create a single string of conversation if messages exist
+        conversation_history = "\n".join(
+            [f"User: {msg.query}\nBot: {msg.response}" for msg in reversed(messages)]
+        ) if messages else ""
+        print(f"Conversation history: {conversation_history}")
+
+        # Get context
+        context = messages[0].context if messages else ""
+        print(f"Context: {context}")
+
+        # RAG Inference
+        config = RAGConfig(
+            embedding_model=os.getenv("EMBEDDING_MODEL"),
+            llm_model=os.getenv("LLM_MODEL"),
+            top_k=int(os.getenv("TOP_K")),
+            temperature=float(os.getenv("TEMPERATURE")),
+            collection_name=os.getenv("CHROMA_COLLECTION"),
+            host=os.getenv("CHROMA_HOST"),
+            port=os.getenv("CHROMA_PORT"),
+            llm_api_key=os.getenv("OPENAI_API_KEY"),
+        )
+        print(f"RAGConfig initialized: {config}")
+        
+        rag_config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'rag', rag_source.rag_name+'.py'))
+
+        Pipeline = get_class_from_input(rag_config_path, rag_source.rag_name)
+        print(f"Pipeline class retrieved: {Pipeline}")
+
+        if Pipeline:
+            # Initialize RAG pipeline
+            rag_pipeline = Pipeline(config)
+            print("RAG pipeline initialized")
+        else:
+            print("Invalid RAG source")
+            return jsonify({"error": "Invalid RAG source"}), 400
+
+        response = rag_pipeline.query(data["query"], context, conversation_history)
+        print(f"RAG pipeline response: {response}")
+
+        # Use OpenAI API to check toxicity
+        openai.api_key = os.getenv("OPENAI_API_KEY")
+        moderation_response = openai.moderations.create(model="omni-moderation-latest", input=response["response"])
+        print(f"OpenAI moderation response: {moderation_response}")
+        
+        is_toxic = moderation_response.results[0].flagged
+        print(f"Is response toxic: {is_toxic}")
 
         # If toxic, store original response but send safe message
         displayed_response = (
             "I apologize, but I cannot provide this response as it may contain inappropriate content."
             if is_toxic
-            else response
+            else response["response"]
         )
+        print(f"Displayed response: {displayed_response}")
 
         # Calculate response time
         response_time_ms = int((time() - start_time) * 1000)
+        print(f"Response time (ms): {response_time_ms}")
 
         # Create new message record
         message = Message(
@@ -590,27 +680,18 @@ def get_inference():
             user_id=user.id,
             rag_id=data["rag_id"],
             query=data["query"],
-            response=response,  # Store original response
+            response=response["response"],  # Store original response
+            context=response["retrieved_documents"],
             response_time_ms=response_time_ms,
             is_toxic=is_toxic,
-            toxicity_response={
-                "toxicity_score": 0.8 if is_toxic else 0.1,
-                "categories": {
-                    "profanity": 0.7 if is_toxic else 0.1,
-                    "threat": 0.3 if is_toxic else 0.0,
-                    "insult": 0.6 if is_toxic else 0.1,
-                    "identity_attack": 0.2 if is_toxic else 0.0,
-                },
-                "flagged_terms": ["term1", "term2"] if is_toxic else [],
-                "recommendation": (
-                    "Content filtered due to policy violation." if is_toxic else None
-                ),
-            },
+            toxicity_response=moderation_response.model_dump(),  # Convert to dict
         )
+        print(f"Message object created: {message}")
 
         # Save to database
         db.session.add(message)
         db.session.commit()
+        print("Message saved to database")
 
         # Return response (with safe message if toxic)
         return (
@@ -628,8 +709,10 @@ def get_inference():
         )
 
     except ValueError as ve:
+        print(f"ValueError: {ve}")
         return jsonify({"error": "Invalid input format", "details": str(ve)}), 400
     except Exception as e:
+        print(f"Exception occurred: {e}")
         db.session.rollback()
         return (
             jsonify(
