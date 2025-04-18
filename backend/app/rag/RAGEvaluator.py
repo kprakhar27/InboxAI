@@ -1,11 +1,11 @@
-
-import os
 import json
-import pandas as pd
+import os
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
 import mlflow
+import pandas as pd
 from openai import OpenAI
 from sklearn.metrics.pairwise import cosine_similarity
-from typing import List, Dict, Any, Tuple, Callable, Optional
 
 
 class RAGEvaluator:
@@ -28,7 +28,7 @@ class RAGEvaluator:
         """
         self.test_dataset = self._load_test_dataset(test_dataset_path)
         self.rag_pipeline = rag_pipeline
-        self.client = OpenAI(api_key=self.rag_pipeline.config.llm_api_key)
+        self.client = OpenAI(base_url="https://api.groq.com/openai/v1", api_key=self.rag_pipeline.config.llm_api_key)
         
     def _load_test_dataset(self, path: str) -> List[Dict[str, Any]]:
         """Load test dataset from file"""
@@ -130,7 +130,7 @@ class RAGEvaluator:
         """
         
         judge_response = self.client.chat.completions.create(
-            model="gpt-4",
+            model="llama3-8b-8192",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1
         )
@@ -169,8 +169,8 @@ class RAGEvaluator:
         # Basic metrics
         with mlflow.start_run(nested=True, run_name="rag_evaluation"):
             # Calculate metric: BLEU score
-            from nltk.translate.bleu_score import corpus_bleu, SmoothingFunction
             import nltk
+            from nltk.translate.bleu_score import SmoothingFunction, corpus_bleu
             nltk.download('punkt', quiet=True)
             nltk.download('punkt_tab', quiet=True)
             
@@ -233,7 +233,7 @@ class RAGEvaluator:
         """
         
         judge_response = self.client.chat.completions.create(
-            model="gpt-4",
+            model="llama3-8b-8192",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1
         )

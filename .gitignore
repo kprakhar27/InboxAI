@@ -203,3 +203,6 @@ dist-ssr
 
 # ENV
 backend/inbox-ai-450407-8c3c788dbf0a.json
+
+# Local env files
+.finalvenv
