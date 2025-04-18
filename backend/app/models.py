@@ -154,6 +154,7 @@ class RAG(db.Model):
     created_at = db.Column(
         db.DateTime(timezone=True), default=db.func.current_timestamp()
     )
+    is_available = db.Column(db.Boolean, nullable=False, default=False)
 
     # Relationships
     messages = db.relationship("Message", backref="rag_source", lazy=True)

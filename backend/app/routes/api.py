@@ -20,6 +20,8 @@ from .. import db
 from ..models import *
 from ..rag.RAGConfig import RAGConfig
 from .get_flow import get_flow
+import openai
+from ..rag.RAGConfig import RAGConfig
 
 dotenv_path = join(dirname(__file__), ".env")
 load_dotenv(dotenv_path)
@@ -33,6 +35,38 @@ else:
 
 flow = get_flow()
 
+def get_class_from_input(module_path: str, class_name: str):
+    """
+    Dynamically load a class from a given file path.
+    
+    Args:
+        module_path: str – full path to the .py file
+        class_name: str – class name defined in that module
+
+    Returns:
+        class object
+    """
+    print(f"Attempting to load class '{class_name}' from {module_path}")
+    module_name = os.path.splitext(os.path.basename(module_path))[0]  # e.g., RAGConfig
+    print(f"Module name: {module_name}")
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+
+    if spec is None or spec.loader is None:
+        print(f"Error: Could not load spec for {module_path}")
+        raise ImportError(f"Could not load spec for {module_path}")
+
+    print(f"Successfully loaded spec for {module_name}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    print(f"Executing module {module_name}")
+    spec.loader.exec_module(module)
+
+    if not hasattr(module, class_name):
+        print(f"Error: Class '{class_name}' not found in {module_path}")
+        raise ImportError(f"Class '{class_name}' not found in {module_path}")
+
+    print(f"Successfully loaded class '{class_name}' from {module_path}")
+    return getattr(module, class_name)
 
 def get_class_from_input(module_path: str, class_name: str):
     """
@@ -567,7 +601,7 @@ def get_inference():
     """
     try:
         print("Starting get_inference function")
-
+        
         # Get user from JWT token
         username = get_jwt_identity()
         print(f"Authenticated username: {username}")
@@ -580,7 +614,6 @@ def get_inference():
         # Validate request data
         data = request.get_json()
         print(f"Request data: {data}")
-
         if not data or not all(k in data for k in ["query", "chat_id", "rag_id"]):
             print("Missing required fields in request data")
             return (
@@ -619,6 +652,7 @@ def get_inference():
         print(f"Retrieved messages: {messages}")
 
         # Create a single string of conversation if messages exist
+
         conversation_history = (
             "\n".join(
                 [
@@ -656,7 +690,6 @@ def get_inference():
 
         Pipeline = get_class_from_input(rag_config_path, rag_source.rag_name)
         print(f"Pipeline class retrieved: {Pipeline}")
-
         if Pipeline:
             # Initialize RAG pipeline
             rag_pipeline = Pipeline(config)
@@ -674,7 +707,6 @@ def get_inference():
             model="omni-moderation-latest", input=response["response"]
         )
         print(f"OpenAI moderation response: {moderation_response}")
-
         is_toxic = moderation_response.results[0].flagged
         print(f"Is response toxic: {is_toxic}")
 
