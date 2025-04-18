@@ -30,7 +30,7 @@ class RAGPipeline:
         print(f"Embedding generated with model: {self.config.embedding_model}")
         return response.data[0].embedding
 
-    def semantic_search(self, query: str, k: Optional[int] = None) -> List[str]:
+    def semantic_search(self, query: str, k: Optional[int] = None) -> str:
         """Search most relevant documents using ChromaDB"""
         print(f"Performing semantic search for query: {query}")
         if k is None:

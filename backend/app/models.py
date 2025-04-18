@@ -2,7 +2,8 @@ import hashlib
 import uuid
 
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.dialects.postgresql import ENUM, JSONB, UUID
+from sqlalchemy.dialects.postgresql import ENUM, UUID
+from sqlalchemy import JSON
 
 from . import db
 
@@ -174,7 +175,7 @@ class Message(db.Model):
     feedback = db.Column(db.Boolean)
     context = db.Column(db.Text, nullable=False)
     is_toxic = db.Column(db.Boolean, default=False)
-    toxicity_response = db.Column(JSONB)
+    toxicity_response = db.Column(JSON)
     created_at = db.Column(
         db.DateTime(timezone=True), default=db.func.current_timestamp()
     )
