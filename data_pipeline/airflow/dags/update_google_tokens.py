@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import google.cloud.logging
 from airflow import DAG
@@ -82,20 +82,24 @@ def get_oauth_credentials():
         raise
 
 
-def refresh_google_tokens(**context):
+def refresh_google_tokens():
     """
     Refresh Google OAuth tokens that are about to expire.
     Updates the tokens in the database with new access tokens and expiry times.
     """
+    session = None
+    success_count = 0
+    failed_count = 0
+
     try:
         logger.info("Starting Google token refresh process")
         session = get_db_session()
 
-        # Get Google OAuth credentials from credentials.json
+        # Get Google OAuth credentials
         client_id, client_secret = get_oauth_credentials()
 
-        # Get all tokens that will expire in the next hour
-        expiry_threshold = datetime.utcnow() + timedelta(hours=1)
+        # Get tokens expiring in next hour using UTC
+        expiry_threshold = datetime.now(timezone.utc) + timedelta(hours=1)
         google_tokens = (
             session.query(GoogleToken)
             .filter(GoogleToken.expires_at <= expiry_threshold)
@@ -115,28 +119,32 @@ def refresh_google_tokens(**context):
                     client_secret=client_secret,
                 )
 
-                if not creds.valid or creds.expired:
-                    logger.info(f"Refreshing token for email: {token.email}")
-                    creds.refresh(Request())
+                # Refresh token
+                creds.refresh(Request())
 
-                    # Update token in database
-                    token.access_token = creds.token
-                    token.expires_at = datetime.utcnow() + timedelta(
-                        seconds=creds.expiry.timestamp() - datetime.utcnow().timestamp()
-                    )
-                    logger.info(
-                        f"Successfully refreshed token for email: {token.email}"
-                    )
+                # Update token in database with UTC timestamps
+                token.access_token = creds.token
+                token.expires_at = datetime.fromtimestamp(
+                    creds.expiry.timestamp(), tz=timezone.utc
+                )
+                token.updated_at = datetime.now(timezone.utc)
+
+                session.add(token)
+                success_count += 1
+                logger.info(f"Successfully refreshed token for email: {token.email}")
 
             except Exception as e:
+                failed_count += 1
                 logger.error(
                     f"Error refreshing token for email {token.email}: {str(e)}"
                 )
                 continue
 
-        # Commit all changes
+        # Commit all changes outside the loop
         session.commit()
-        logger.info("Successfully completed token refresh process")
+        logger.info(
+            f"Token refresh completed. Success: {success_count}, Failed: {failed_count}"
+        )
 
     except Exception as e:
         logger.error(f"Database error in token refresh: {str(e)}")

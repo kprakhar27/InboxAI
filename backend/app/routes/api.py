@@ -7,6 +7,7 @@ from os.path import dirname, join
 from random import choice, randint, random
 from time import sleep, time
 
+import openai
 import requests
 from dotenv import load_dotenv
 from flask import Blueprint, jsonify, redirect, request
@@ -17,6 +18,7 @@ from sqlalchemy import text
 
 from .. import db
 from ..models import *
+from ..rag.RAGConfig import RAGConfig
 from .get_flow import get_flow
 import openai
 from ..rag.RAGConfig import RAGConfig
@@ -65,6 +67,40 @@ def get_class_from_input(module_path: str, class_name: str):
 
     print(f"Successfully loaded class '{class_name}' from {module_path}")
     return getattr(module, class_name)
+
+def get_class_from_input(module_path: str, class_name: str):
+    """
+    Dynamically load a class from a given file path.
+
+    Args:
+        module_path: str – full path to the .py file
+        class_name: str – class name defined in that module
+
+    Returns:
+        class object
+    """
+    print(f"Attempting to load class '{class_name}' from {module_path}")
+    module_name = os.path.splitext(os.path.basename(module_path))[0]  # e.g., RAGConfig
+    print(f"Module name: {module_name}")
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+
+    if spec is None or spec.loader is None:
+        print(f"Error: Could not load spec for {module_path}")
+        raise ImportError(f"Could not load spec for {module_path}")
+
+    print(f"Successfully loaded spec for {module_name}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    print(f"Executing module {module_name}")
+    spec.loader.exec_module(module)
+
+    if not hasattr(module, class_name):
+        print(f"Error: Class '{class_name}' not found in {module_path}")
+        raise ImportError(f"Class '{class_name}' not found in {module_path}")
+
+    print(f"Successfully loaded class '{class_name}' from {module_path}")
+    return getattr(module, class_name)
+
 
 @api_bp.route("/redirect", methods=["GET", "POST"])
 def redirect_url():
@@ -569,7 +605,7 @@ def get_inference():
         # Get user from JWT token
         username = get_jwt_identity()
         print(f"Authenticated username: {username}")
-        
+
         user = Users.query.filter_by(username=username).first()
         if not user:
             print("User not found")
@@ -578,7 +614,6 @@ def get_inference():
         # Validate request data
         data = request.get_json()
         print(f"Request data: {data}")
-        
         if not data or not all(k in data for k in ["query", "chat_id", "rag_id"]):
             print("Missing required fields in request data")
             return (
@@ -608,7 +643,8 @@ def get_inference():
         print("Started timing for inference")
 
         messages = (
-            db.session.query(Message).filter_by(chat_id=data["chat_id"], user_id=user.id)
+            db.session.query(Message)
+            .filter_by(chat_id=data["chat_id"], user_id=user.id)
             .order_by(Message.created_at.desc())
             .limit(3)
             .all()
@@ -616,9 +652,17 @@ def get_inference():
         print(f"Retrieved messages: {messages}")
 
         # Create a single string of conversation if messages exist
-        conversation_history = "\n".join(
-            [f"User: {msg.query}\nBot: {msg.response}" for msg in reversed(messages)]
-        ) if messages else ""
+
+        conversation_history = (
+            "\n".join(
+                [
+                    f"User: {msg.query}\nBot: {msg.response}"
+                    for msg in reversed(messages)
+                ]
+            )
+            if messages
+            else ""
+        )
         print(f"Conversation history: {conversation_history}")
 
         # Get context
@@ -637,12 +681,15 @@ def get_inference():
             llm_api_key=os.getenv("OPENAI_API_KEY"),
         )
         print(f"RAGConfig initialized: {config}")
-        
-        rag_config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'rag', rag_source.rag_name+'.py'))
+
+        rag_config_path = os.path.abspath(
+            os.path.join(
+                os.path.dirname(__file__), "..", "rag", rag_source.rag_name + ".py"
+            )
+        )
 
         Pipeline = get_class_from_input(rag_config_path, rag_source.rag_name)
         print(f"Pipeline class retrieved: {Pipeline}")
-
         if Pipeline:
             # Initialize RAG pipeline
             rag_pipeline = Pipeline(config)
@@ -656,9 +703,10 @@ def get_inference():
 
         # Use OpenAI API to check toxicity
         openai.api_key = os.getenv("OPENAI_API_KEY")
-        moderation_response = openai.moderations.create(model="omni-moderation-latest", input=response["response"])
+        moderation_response = openai.moderations.create(
+            model="omni-moderation-latest", input=response["response"]
+        )
         print(f"OpenAI moderation response: {moderation_response}")
-        
         is_toxic = moderation_response.results[0].flagged
         print(f"Is response toxic: {is_toxic}")
 

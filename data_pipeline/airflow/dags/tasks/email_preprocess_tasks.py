@@ -9,6 +9,7 @@ from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from google.cloud import storage
 from services.storage_service import StorageService
 from utils.airflow_utils import decode_base64_url_safe
+from utils.db_utils import add_preprocessing_summary, get_db_session
 from utils.gcp_logging_utils import setup_gcp_logging
 from utils.preprocessing_utils import EmailPreprocessor
 
@@ -85,10 +86,37 @@ def preprocess_emails(**context):
         processed_df = preprocessor.preprocess(emails_df)
         logger.info(f"Successfully preprocessed {len(processed_df)} emails")
 
+        # Publish metrics
+        logger.info("Publishing metrics for email preprocessing")
+        total_emails = len(emails_df)
+        total_threads = 0
+        successful_emails = len(processed_df)
+        successful_threads = 0
+        failed_emails = total_emails - successful_emails
+        failed_threads = 0
+
+        # Intialize database session
+        session = get_db_session()
+
+        user_id = context["dag_run"].conf.get("user_id")
+        email = context["dag_run"].conf.get("email")
+        add_preprocessing_summary(
+            session,
+            user_id=user_id,
+            email=email,
+            total_emails_processed=total_emails,
+            total_threads_processed=total_threads,
+            failed_emails=failed_emails,
+            failed_threads=failed_threads,
+        )
+
         # Save processed data
         logger.info(f"Saving processed data to {processed_data_path}")
         processed_df.to_parquet(processed_data_path, index=False)
         logger.info(f"Successfully saved processed data to {processed_data_path}")
+
+        # Close the session
+        session.close()
 
         # Push metadata to XCom
         context["ti"].xcom_push(
@@ -175,6 +203,8 @@ def trigger_embedding_pipeline(**context):
             conf={
                 "execution_date": execution_date,
                 "processed_gcs_uri": processed_gcs_uri,
+                "user_id": context["dag_run"].conf.get("user_id"),
+                "email": context["dag_run"].conf.get("email"),
             },
             reset_dag_run=True,
             wait_for_completion=False,

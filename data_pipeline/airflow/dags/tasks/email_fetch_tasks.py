@@ -101,76 +101,6 @@ def get_batch_data_from_trigger(**context):
         raise
 
 
-def check_anomaly(email_data_str, size_threshold=3.0):
-    """
-    Check email data for attachment size anomalies and dangerous file extensions.
-
-    Args:
-        email_data_str (str): Email data as a JSON string
-        size_threshold (float): Threshold for size anomalies (default: 3.0)
-
-    Returns:
-        bool: True if anomaly detected, False otherwise
-    """
-    try:
-        # Parse the string input to JSON
-        emails_data = json.loads(email_data_str)
-
-        # Ensure emails_data is a list
-        if isinstance(emails_data, dict):
-            emails_data = [emails_data]
-
-        if not emails_data:
-            return False
-
-        # Attachment Analysis
-        attachment_sizes = []
-
-        # Dangerous file extensions to check for
-        dangerous_types = {"exe", "bat", "msi", "js", "vbs", "jar", "ps1", "scr"}
-
-        for email in emails_data:
-            if "attachments" in email and email["attachments"]:
-                for att in email["attachments"]:
-                    # Check for dangerous extensions
-                    filename = att.get("filename", "").lower()
-                    file_type = att.get("type", "").lower()
-
-                    # Check extension in both filename and type fields
-                    if (
-                        filename.split(".")[-1] in dangerous_types
-                        or file_type.split(".")[-1] in dangerous_types
-                    ):
-                        return True
-
-                    # Check for size anomalies
-                    if "size" in att:
-                        try:
-                            size = float(att["size"])
-                            attachment_sizes.append(size)
-                        except (ValueError, TypeError):
-                            pass
-
-        # Check for unusually large attachments
-        if attachment_sizes and len(attachment_sizes) > 1:
-            mean_size = np.mean(attachment_sizes)
-            std_size = np.std(attachment_sizes)
-
-            # Only check if we have variation in sizes
-            if std_size > 0 and any(
-                size > mean_size + (size_threshold * std_size)
-                for size in attachment_sizes
-            ):
-                return True
-
-        return False
-
-    except Exception as e:
-        # Log the error in a real application
-        print(f"Error analyzing email data: {e}")
-        return False  # Default to no anomaly if we can't process
-
-
 def process_emails_batch(**context):
     """
     Process a batch of emails from the batch_data XCom.
@@ -211,18 +141,15 @@ def process_emails_batch(**context):
         emails_data = retrieve_email_data(gmail_service, message_ids)
         logger.info(f"Retrieved {len(emails_data)} emails")
 
-        # Analomy detection for the emails data
-        flag = check_anomaly(emails_data)
-
-        if flag:
-            logger.info("Anomaly detected in the emails data")
-            send_failure_email_anomoly(context)
-
         # Validate emails using Pydantic models
         valid_emails, validation_errors = validate_emails(emails_data)
         logger.info(
             f"Validated emails: {len(valid_emails)} valid, {validation_errors} errors"
         )
+
+        if validation_errors:
+            logger.info("Anomaly detected in the emails data")
+            send_failure_email_anomoly(context)
 
         # Save validated emails to storage
         saved_count = save_emails(valid_emails, email_address, run_id, user_id)
@@ -432,7 +359,11 @@ def trigger_preprocessing_pipeline(**context):
     logger.info("Starting trigger_preprocessing_pipeline")
     try:
         gcs_uri = context["ti"].xcom_pull(key="gcs_uri")
-        conf = {"gcs_uri": gcs_uri}
+        conf = {
+            "gcs_uri": gcs_uri,
+            "email": context["dag_run"].conf.get("email_address"),
+            "user_id": context["dag_run"].conf.get("user_id"),
+        }
         trigger_task = TriggerDagRunOperator(
             task_id="trigger_embedding_dag",
             trigger_dag_id="email_preprocessing_pipeline",

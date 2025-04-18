@@ -150,6 +150,7 @@ class RAG(db.Model):
 
     rag_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     rag_name = db.Column(db.String(255), nullable=False)
+    is_available = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(
         db.DateTime(timezone=True), default=db.func.current_timestamp()
     )
