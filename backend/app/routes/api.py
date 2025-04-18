@@ -616,7 +616,7 @@ def record_inference_feedback():
         logger.debug(f"Recording feedback: {feedback} for message: {message_id}")
 
         # Get message and verify ownership
-        message = Message.query.filter_by(
+        message = db.session.query(Message).filter_by(
             message_id=message_id, user_id=user.id
         ).first()
 
