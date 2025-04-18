@@ -77,12 +77,20 @@ def upload_to_chroma(user_id, embedded_data_path, client) -> None:
     try:
         # Load the data
         df = pd.read_parquet(embedded_data_path)
+        items_to_upsert = len(df)
+        logger.info(f"Loaded {items_to_upsert} items from parquet file")
 
         # Sanitize the user ID
         collection_name = sanitize_collection_name(user_id)
         logger.info(f"Using collection name: {collection_name} for user: {user_id}")
         collection = client.get_or_create_collection(
             name=collection_name, metadata=None, embedding_function=None
+        )
+
+        # Get count before upsert
+        count_before = collection.count()
+        logger.info(
+            f"Collection {collection_name} has {count_before} items before upsert"
         )
 
         # Upload data to Chroma
@@ -92,9 +100,51 @@ def upload_to_chroma(user_id, embedded_data_path, client) -> None:
             metadatas=df.metadata.tolist(),
             ids=df.message_id.tolist(),
         )
-        logger.info(f"Successfully uploaded data to Chroma for user {user_id}.")
+        # Get count after upsert
+        count_after = collection.count()
+        new_items = count_after - count_before
+
+        # Validate upsert results
+        if new_items > 0:
+            logger.info(f"Added {new_items} new items to collection {collection_name}")
+            if new_items != items_to_upsert:
+                logger.warning(
+                    f"Count mismatch: Expected to add {items_to_upsert} items "
+                    f"but added {new_items} items"
+                )
+        elif new_items == 0:
+            if items_to_upsert > 0:
+                logger.info(
+                    f"Updated {items_to_upsert} existing items in collection "
+                    f"{collection_name} (no new items added)"
+                )
+            else:
+                logger.warning("No items were upserted")
+        else:
+            error_msg = (
+                f"Invalid count change: {count_before} → {count_after} "
+                f"({new_items} difference)"
+            )
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+
+        # Verify all IDs are present
+        expected_ids = set(df.message_id.tolist())
+        actual_ids = set(collection.get()["ids"])
+        missing_ids = expected_ids - actual_ids
+
+        if missing_ids:
+            error_msg = f"Missing {len(missing_ids)} IDs after upsert"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+
+        logger.info(
+            f"Successfully uploaded data to Chroma for user {user_id}. "
+            f"Collection now has {count_after} total items."
+        )
+
     except Exception as e:
-        logger.error(f"Error uploading data to Chroma: {e}")
+        logger.error(f"Error uploading data to Chroma: {str(e)}")
         raise
 
 

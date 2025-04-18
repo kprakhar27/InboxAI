@@ -20,8 +20,6 @@ from .. import db
 from ..models import *
 from ..rag.RAGConfig import RAGConfig
 from .get_flow import get_flow
-import openai
-from ..rag.RAGConfig import RAGConfig
 
 dotenv_path = join(dirname(__file__), ".env")
 load_dotenv(dotenv_path)
