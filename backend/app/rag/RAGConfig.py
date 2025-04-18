@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class RAGConfig:
     """Configuration for a RAG pipeline"""
@@ -11,3 +12,4 @@ class RAGConfig:
     host: str
     port: str
     llm_api_key: str
+    embedding_api_key: str

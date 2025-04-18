@@ -1,0 +1,24 @@
+services:
+  mlflow:
+    image: ${MLFLOW_IMAGE}
+    container_name: mlflow-server
+    ports:
+      - "${MLFLOW_PORT}:${MLFLOW_PORT}"
+    volumes:
+      - ./google_sa.json:/google_sa.json:ro
+      # Add volume mount for GCP credentials
+      - $HOME/.config/gcloud:/root/.config/gcloud:ro
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/google_sa.json
+      - MLFLOW_TRACKING_USERNAME=${MLFLOW_TRACKING_USERNAME}
+      - MLFLOW_TRACKING_PASSWORD=${MLFLOW_TRACKING_PASSWORD}
+    command: >
+      bash -c "pip install psycopg2-binary google-cloud-storage &&
+      mlflow server
+      --host 0.0.0.0
+      --port ${MLFLOW_PORT}
+      --backend-store-uri postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
+      --default-artifact-root ${ARTIFACT_ROOT}
+      --serve-artifacts"
+    env_file:
+      - .env

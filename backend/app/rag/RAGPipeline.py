@@ -5,8 +5,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import chromadb
 import mlflow
 import pandas as pd
-from openai import OpenAI
 from app.rag.RAGConfig import RAGConfig  # Using absolute import
+from openai import OpenAI
 from sklearn.metrics.pairwise import cosine_similarity
 
 
@@ -18,13 +18,14 @@ class RAGPipeline:
         self.config = config
         self.chroma_client = chromadb.HttpClient(host=config.host, port=config.port)
         self.collection = self.chroma_client.get_collection(config.collection_name)
-        self.client = OpenAI(api_key=config.llm_api_key)
+        self.client = OpenAI(base_url="https://api.groq.com/openai/v1", api_key=config.llm_api_key)
+        self.embedding_client = OpenAI(api_key=config.embedding_api_key)
         print(f"RAGPipeline initialized with collection: {config.collection_name}")
 
     def get_embedding(self, text: str) -> List[float]:
         """Get embeddings using OpenAI API"""
         print(f"Getting embedding for text: {text[:50]}...")
-        response = self.client.embeddings.create(
+        response = self.embedding_client.embeddings.create(
             input=text, model=self.config.embedding_model
         )
         print(f"Embedding generated with model: {self.config.embedding_model}")

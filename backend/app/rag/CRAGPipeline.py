@@ -3,12 +3,13 @@ from typing import Any, Dict, List, Optional
 import chromadb
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 from openai import OpenAI
 from RAGConfig import RAGConfig
-from langchain_core.pydantic_v1 import BaseModel, Field
 from typing_extensions import TypedDict
+
 
 class GraphState(TypedDict):
     """
@@ -30,6 +31,7 @@ class RetrievalEvaluator(BaseModel):
     binary_score: str = Field(
         description="Emails are relevant to the question, 'yes' or 'no'"
     )
+
 
 class CRAGPipeline:
     """Conditional RAG Pipeline with MLflow integration"""
@@ -142,7 +144,7 @@ class CRAGPipeline:
 
         query_embedding = self.get_embedding(query)
         results = self.collection.query(query_embeddings=[query_embedding], n_results=k)
-        return ' '.join(results["documents"][0])
+        return " ".join(results["documents"][0])
 
     def retrieve(self, state):
         """
