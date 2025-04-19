@@ -4,6 +4,7 @@ langchain>=0.0.267
 langchain-openai>=0.0.2
 langchain_core
 langgraph
+langchain-groq==0.3.2
 openai>=1.3.0
 pandas>=2.0.3
 numpy>=1.24.3
