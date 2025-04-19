@@ -455,16 +455,16 @@ def monitoring_function(**context):
             if ti:
                 ti.xcom_push(key="monitoring_alerts", value=alert_msg)
                 ti.xcom_push(key="has_alerts", value=True)
+            return True  # Return True only when there are alerts
         else:
             logger.info("[MONITORING] No alerts generated")
             if ti:
                 ti.xcom_push(key="has_alerts", value=False)
+            return False  # Return False when there are no alerts
 
         # Store metrics in XCom for downstream tasks
         if ti:
             ti.xcom_push(key="monitoring_metrics", value=metrics)
-        
-        return True
 
     except Exception as e:
         error_msg = f"[ERROR] Monitoring function failed: {str(e)}"
@@ -472,7 +472,7 @@ def monitoring_function(**context):
         if ti:
             ti.xcom_push(key="monitoring_error", value=error_msg)
             ti.xcom_push(key="has_error", value=True)
-        return False
+        return True  # Return True when there's an error to trigger email notification
 
     finally:
         session.close()

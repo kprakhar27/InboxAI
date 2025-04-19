@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
-from airflow.utils.trigger_rule import TriggerRule
 from tasks.email_fetch_tasks import send_monitoring_email
 from utils.airflow_utils import (
     create_db_session_task,
@@ -67,7 +66,6 @@ with DAG(
     send_email_alert = PythonOperator(
         task_id="send_email_alert",
         python_callable=send_monitoring_email,
-        trigger_rule=TriggerRule.ONE_FAILED,
         provide_context=True,
         dag=dag,
     )
