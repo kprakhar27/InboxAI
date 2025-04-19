@@ -62,9 +62,6 @@ const Index = () => {
             >
               Get Started
             </Button>
-            <Button size="lg" variant="outline">
-              Learn More
-            </Button>
           </div>
         </div>
       </section>

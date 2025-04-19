@@ -13,30 +13,44 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card } from "../ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
+import { Label } from "@/components/ui/label";
 
 interface ChatInterfaceProps {
   chatId?: string;
   onChatCreated?: (newChatId: string) => void;
+  onNewChat?: () => void;
 }
+const INITIAL_MESSAGE = {
+  id: "1",
+  content: "How can I help with your emails today?",
+  sender: "assistant" as const,
+};
 
 export const ChatInterface = ({
   chatId,
   onChatCreated,
+  onNewChat,
 }: ChatInterfaceProps) => {
   const { toast } = useToast();
   const [message, setMessage] = useState("");
   const [chatMessages, setChatMessages] = useState<ChatMessageType[]>([
-    {
-      id: "1",
-      content: "How can I help with your emails today?",
-      sender: "assistant",
-    },
+    INITIAL_MESSAGE,
   ]);
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
 
   const [ragSources, setRagSources] = useState<RagSource[]>([]);
   const [selectedRagSource, setSelectedRagSource] = useState<string>("");
   const [isLoadingRagSources, setIsLoadingRagSources] = useState(false);
+  const [showNewChatDialog, setShowNewChatDialog] = useState(false);
+  const [newChatName, setNewChatName] = useState("");
+  const [pendingUserMessage, setPendingUserMessage] = useState("");
   const generateId = () => Math.random().toString(36).substring(2, 11);
 
   // Fetch RAG sources when component mounts
@@ -53,8 +67,7 @@ export const ChatInterface = ({
         console.error("Failed to fetch RAG sources:", error);
         toast({
           title: "Error",
-          description:
-            "Failed to load RAG sources. Using default configuration.",
+          description: "Failed to load RAG sources.",
           variant: "destructive",
         });
       } finally {
@@ -68,7 +81,11 @@ export const ChatInterface = ({
   // Load chat messages if chatId is provided
   useEffect(() => {
     const loadChatMessages = async () => {
-      if (!chatId) return;
+      if (!chatId) {
+        // If there's no chatId, we should show the initial message
+        setChatMessages([INITIAL_MESSAGE]);
+        return;
+      }
 
       try {
         setIsWaitingForResponse(true);
@@ -96,15 +113,19 @@ export const ChatInterface = ({
         // Only replace messages if we got a valid response
         if (messages.length > 0) {
           setChatMessages(messages);
+        } else {
+          // If no messages are found for this chat, show the initial message
+          setChatMessages([INITIAL_MESSAGE]);
         }
       } catch (error) {
         console.error("Failed to load chat messages:", error);
         toast({
           title: "Error",
           description:
-            "Failed to load chat messages. Starting a new conversation.",
+            "Failed to load chat messages. Start a new conversation.",
           variant: "destructive",
         });
+        setChatMessages([INITIAL_MESSAGE]);
       } finally {
         setIsWaitingForResponse(false);
       }
@@ -113,9 +134,38 @@ export const ChatInterface = ({
     loadChatMessages();
   }, [chatId, toast]);
 
-  const handleSend = async () => {
-    if (!message.trim()) return;
+  useEffect(() => {
+    if (onNewChat) {
+      // Add a listener for the onNewChat prop
+      const handleExternalNewChat = () => {
+        handleNewChat();
+      };
 
+      // Clean up the listener
+      return () => {
+        // No cleanup needed for this simple implementation
+      };
+    }
+  }, [onNewChat]);
+
+  const initiateMessage = () => {
+    if (!message.trim()) return;
+    if (!chatId) {
+      // For new chats, show the dialog to get a chat name
+      setPendingUserMessage(message);
+      setNewChatName(message.substring(0, 30) + "...");
+      setShowNewChatDialog(true);
+      setMessage("");
+    } else {
+      // For existing chats, send the message directly
+      handleSendToExistingChat(message, chatId);
+    }
+  };
+
+  const handleSendToExistingChat = async (
+    messageText: string,
+    chat_id: string
+  ) => {
     const userMessageId = generateId();
 
     // Add user message to chat
@@ -123,7 +173,7 @@ export const ChatInterface = ({
       ...prev,
       {
         id: userMessageId,
-        content: message,
+        content: messageText,
         sender: "user",
         timestamp: new Date().toISOString(),
       },
@@ -145,26 +195,10 @@ export const ChatInterface = ({
     setMessage("");
 
     try {
-      // If no chatId, create a new chat first
-      let activeChatId = chatId;
-
-      if (!activeChatId) {
-        const newChat = await gmailService.createChat(
-          message.substring(0, 30) + "..."
-        );
-        activeChatId = newChat.id;
-
-        // Notify parent component about the new chat
-        if (onChatCreated) {
-          onChatCreated(activeChatId);
-        }
-      }
-
-      // Call the inference API with chat ID and RAG source if selected
       const response = await gmailService.getInference(
-        message,
+        messageText,
         selectedRagSource || undefined,
-        activeChatId
+        chat_id
       );
 
       // Update the chat messages - remove the temporary loading message
@@ -177,7 +211,7 @@ export const ChatInterface = ({
         ...prev.filter((msg) => msg.id !== userMessageId),
         {
           id: `${response.message_id}-user`,
-          content: message,
+          content: messageText,
           sender: "user",
           timestamp: new Date().toISOString(),
           queryHash: response.query,
@@ -233,6 +267,45 @@ export const ChatInterface = ({
       )
     );
   };
+  const handleNewChat = () => {
+    setChatMessages([INITIAL_MESSAGE]);
+    if (onNewChat) {
+      onNewChat();
+    }
+  };
+
+  const createNewChat = async () => {
+    setIsWaitingForResponse(true);
+    try {
+      // First create the chat with the user-provided name
+      const chatName = newChatName.trim()
+        ? newChatName
+        : pendingUserMessage.substring(0, 30) + "...";
+      const newChat = await gmailService.createChat(chatName);
+      const activeChatId = newChat.chat_id;
+      if (onNewChat) {
+        onNewChat();
+      }
+      // Once we have the chat ID, update the parent component
+      if (onChatCreated) {
+        onChatCreated(activeChatId);
+      }
+      setShowNewChatDialog(false);
+
+      // Now send the message to the newly created chat
+      await handleSendToExistingChat(pendingUserMessage, activeChatId);
+    } catch (error) {
+      console.error("Failed to create new chat:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create a new chat. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsWaitingForResponse(false);
+      setPendingUserMessage("");
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col h-full">
@@ -258,7 +331,9 @@ export const ChatInterface = ({
                 placeholder="Type your query about your emails..."
                 className="flex-1"
                 onKeyDown={(e) =>
-                  e.key === "Enter" && !isWaitingForResponse && handleSend()
+                  e.key === "Enter" &&
+                  !isWaitingForResponse &&
+                  initiateMessage()
                 }
                 disabled={isWaitingForResponse}
               />
@@ -283,7 +358,7 @@ export const ChatInterface = ({
               )}
 
               <Button
-                onClick={handleSend}
+                onClick={initiateMessage}
                 className="hover:bg-[#b5adff]"
                 disabled={isWaitingForResponse || !message.trim()}
               >
@@ -297,6 +372,42 @@ export const ChatInterface = ({
           </div>
         </div>
       </Card>
+      <Dialog open={showNewChatDialog} onOpenChange={setShowNewChatDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Name your new chat</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Name
+              </Label>
+              <Input
+                id="name"
+                value={newChatName}
+                onChange={(e) => setNewChatName(e.target.value)}
+                className="col-span-3"
+                placeholder="Enter a name for this chat"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowNewChatDialog(false)}
+              disabled={isWaitingForResponse}
+            >
+              Cancel
+            </Button>
+            <Button onClick={createNewChat} disabled={isWaitingForResponse}>
+              {isWaitingForResponse ? (
+                <Loader className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Create Chat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

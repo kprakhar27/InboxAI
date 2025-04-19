@@ -23,7 +23,6 @@ const Login = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -44,11 +43,6 @@ const Login = () => {
     }
     try {
       setIsLoading(true);
-      if (showForgotPassword) {
-        // Handle forgot password submission
-        console.log("Reset password for:", resetEmail);
-        return;
-      }
 
       const credentials = {
         username: email,
@@ -94,51 +88,6 @@ const Login = () => {
       setIsLoading(false);
     }
   };
-
-  if (showForgotPassword) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md mx-auto animate-fade-up">
-          <CardHeader className="space-y-1">
-            <Button
-              variant="ghost"
-              className="w-fit -ml-4"
-              onClick={() => setShowForgotPassword(false)}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to login
-            </Button>
-            <CardTitle className="text-2xl font-bold">Reset Password</CardTitle>
-            <CardDescription>
-              Enter your email address and we'll send you a link to reset your
-              password
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="Email"
-                    className="pl-10"
-                    value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-              <Button type="submit" className="w-full">
-                Send Reset Link
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -263,18 +212,6 @@ const Login = () => {
               {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
             </Button>
           </form>
-
-          <div>
-            {isLogin && (
-              <Button
-                variant="link"
-                className="w-full mt-2"
-                onClick={() => setShowForgotPassword(true)}
-              >
-                Forgot password?
-              </Button>
-            )}
-          </div>
         </CardContent>
       </Card>
     </div>
