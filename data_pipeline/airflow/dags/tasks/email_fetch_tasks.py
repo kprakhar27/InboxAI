@@ -445,7 +445,7 @@ def send_monitoring_email(**context):
 
     logger.info("Starting send_monitoring_email")
     try:
-        subject, body = generate_monitoring_content(context)
+        subject, body = generate_monitoring_content(**context)
         result = send_notification_email(subject, body)
 
         return result
