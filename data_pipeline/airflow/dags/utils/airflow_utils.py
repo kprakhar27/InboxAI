@@ -371,7 +371,8 @@ def monitoring_function(**context):
         # --- MESSAGE METRICS ---
         message_count = session.query(func.count(Message.message_id)).filter(Message.created_at >= start_time).scalar()
 
-        if message_count >= 20:
+        # if message_count >= 20:
+        if message_count > 0:
             toxicity_rate = session.query(func.avg(Message.is_toxic.cast(Integer))).filter(Message.created_at >= start_time).scalar()
             customer_satisfaction = session.query(func.avg(Message.feedback.cast(Integer))).filter(Message.created_at >= start_time).scalar()
             avg_response_time_ms = session.query(func.avg(Message.response_time_ms)).filter(Message.created_at >= start_time).scalar()
@@ -383,27 +384,20 @@ def monitoring_function(**context):
         # --- EMAIL PROCESSING SUMMARY ---
         processing = session.query(
             func.sum(EmailProcessingSummary.total_emails_processed),
-            func.sum(EmailProcessingSummary.total_threads_processed),
             func.sum(EmailProcessingSummary.failed_emails),
-            func.sum(EmailProcessingSummary.failed_threads),
         ).filter(EmailProcessingSummary.run_timestamp >= start_time).one()
 
         # --- EMAIL EMBEDDING SUMMARY ---
         embedding = session.query(
             func.sum(EmailEmbeddingSummary.total_emails_embedded),
-            func.sum(EmailEmbeddingSummary.total_threads_embedded),
             func.sum(EmailEmbeddingSummary.failed_emails),
-            func.sum(EmailEmbeddingSummary.failed_threads),
         ).filter(EmailEmbeddingSummary.run_timestamp >= start_time).one()
 
         # --- EMAIL PREPROCESSING SUMMARY ---
         preprocessing = session.query(
             func.sum(EmailPreprocessingSummary.total_emails_processed),
-            func.sum(EmailPreprocessingSummary.total_threads_processed),
             func.sum(EmailPreprocessingSummary.successful_emails),
-            func.sum(EmailPreprocessingSummary.successful_threads),
             func.sum(EmailPreprocessingSummary.failed_emails),
-            func.sum(EmailPreprocessingSummary.failed_threads),
         ).filter(EmailPreprocessingSummary.run_timestamp >= start_time).one()
 
         # --- METRICS DICT ---
@@ -414,21 +408,14 @@ def monitoring_function(**context):
             "total_messages": total_messages,
 
             "emails_processed": processing[0] or 0,
-            "threads_processed": processing[1] or 0,
             "emails_failed": processing[2] or 0,
-            "threads_failed": processing[3] or 0,
 
             "emails_embedded": embedding[0] or 0,
-            "threads_embedded": embedding[1] or 0,
             "embedding_failed_emails": embedding[2] or 0,
-            "embedding_failed_threads": embedding[3] or 0,
 
             "emails_preprocessed": preprocessing[0] or 0,
-            "threads_preprocessed": preprocessing[1] or 0,
             "preprocessing_successful_emails": preprocessing[2] or 0,
-            "preprocessing_successful_threads": preprocessing[3] or 0,
             "preprocessing_failed_emails": preprocessing[4] or 0,
-            "preprocessing_failed_threads": preprocessing[5] or 0,
         }
 
         logger.info(f"[MONITORING] Daily Metrics:\n{metrics}")
@@ -451,7 +438,6 @@ def monitoring_function(**context):
         if embedding_success_rate < 0.85:
             alerts.append(f"embedding success rate too low: {embedding_success_rate:.2%}")
 
-        # Always push metrics to XCom
         if ti:
             ti.xcom_push(key="monitoring_metrics", value=metrics)
 
@@ -476,7 +462,7 @@ def monitoring_function(**context):
         if ti:
             ti.xcom_push(key="monitoring_error", value=error_msg)
             ti.xcom_push(key="has_error", value=True)
-            ti.xcom_push(key="has_alerts", value=True)  # Set has_alerts to True on error
+            ti.xcom_push(key="has_alerts", value=True)
         return True
 
     finally:
