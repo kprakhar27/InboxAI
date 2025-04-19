@@ -436,10 +436,10 @@ def send_monitoring_email(**context):
     """Send a monitoring email notification."""
     logger.info("Starting send_monitoring_email")
     ti = context["task_instance"]
-    has_alert = ti.xcom_pull(key="has_alert")
-    logger.info(f"Has alert from xcom: {has_alert}")
+    has_alerts = ti.xcom_pull(key="has_alerts")
+    logger.info(f"Has alert from xcom: {has_alerts}")
 
-    if not has_alert:
+    if not has_alerts:
         logger.info("No alerts present.")
         return True
 
