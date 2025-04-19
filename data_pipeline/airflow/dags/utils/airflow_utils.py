@@ -363,7 +363,7 @@ def monitoring_function(**context):
     logger.info("Running global system monitoring")
 
     session = get_db_session()
-    start_time = datetime.utcnow() - timedelta(days=1)
+    start_time = datetime.utcnow() - timedelta(days=7)
     ti = context.get("task_instance")
     has_alerts = False  # Initialize flag
 
