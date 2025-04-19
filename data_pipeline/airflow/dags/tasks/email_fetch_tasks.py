@@ -435,7 +435,7 @@ def send_success_email(**context):
 def send_monitoring_email(**context):
     """Send a monitoring email notification."""
 
-    if not context.get("has_alert", False):
+    if not context.get("has_alert"):
         logger.info("Monitoring email sending is disabled or no alerts present.")
         return True
 
