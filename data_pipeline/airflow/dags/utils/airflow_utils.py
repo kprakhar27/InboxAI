@@ -454,15 +454,25 @@ def monitoring_function(**context):
             logger.warning(f"[ALERT] Daily System Alert:\n{alert_msg}")
             if ti:
                 ti.xcom_push(key="monitoring_alerts", value=alert_msg)
-            raise ValueError(alert_msg)
+                ti.xcom_push(key="has_alerts", value=True)
+        else:
+            logger.info("[MONITORING] No alerts generated")
+            if ti:
+                ti.xcom_push(key="has_alerts", value=False)
 
+        # Store metrics in XCom for downstream tasks
+        if ti:
+            ti.xcom_push(key="monitoring_metrics", value=metrics)
+        
         return True
 
     except Exception as e:
+        error_msg = f"[ERROR] Monitoring function failed: {str(e)}"
+        logger.exception(error_msg)
         if ti:
-            ti.xcom_push(key="monitoring_error", value=str(e))
-        logger.exception(f"[ERROR] Monitoring function failed: {str(e)}")
-        raise
+            ti.xcom_push(key="monitoring_error", value=error_msg)
+            ti.xcom_push(key="has_error", value=True)
+        return False
 
     finally:
         session.close()
