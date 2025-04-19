@@ -14,6 +14,7 @@ from services.storage_service import StorageService
 from utils.airflow_utils import (
     authenticate_gmail,
     generate_email_content,
+    generate_monitoring_content,
     generate_run_id,
     retrieve_email_data,
     save_emails,
@@ -430,3 +431,26 @@ def send_success_email(**context):
         return False
     finally:
         logger.info("Finished send_success_email")
+
+def send_monitoring_email(**context):
+    """Send a monitoring email notification."""
+    logger.info("Starting send_monitoring_email")
+    ti = context["task_instance"]
+    has_alerts = ti.xcom_pull(key="has_alerts")
+    logger.info(f"Has alert from xcom: {has_alerts}")
+
+    if not has_alerts:
+        logger.info("No alerts present.")
+        return True
+
+    logger.info("Starting send_monitoring_email")
+    try:
+        subject, body = generate_monitoring_content(**context)
+        result = send_notification_email(subject, body)
+
+        return result
+    except Exception as e:
+        logger.error(f"Error in send_monitoring_email: {str(e)}")
+        return False
+    finally:
+        logger.info("Finished send_monitoring_email")
