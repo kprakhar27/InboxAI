@@ -72,5 +72,4 @@ with DAG(
     logger.info("Email alert task initialized")
 
     # Setup Task Dependencies
-    start_task >> check_monitoring_status
-    check_monitoring_status >> send_email_alert
+    start_task >> check_monitoring_status >> send_email_alert
