@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 from airflow.configuration import conf
@@ -14,9 +14,11 @@ from auth.gmail_auth import GmailAuthenticator
 from google.cloud import storage
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.errors import HttpError
+from models_postgres import *
 from models_pydantic import EmailSchema
 from pydantic import ValidationError
 from services.storage_service import StorageService
+from sqlalchemy import Integer, func
 from utils.db_utils import get_db_session, get_last_read_timestamp, update_run_status
 
 logger = logging.getLogger(__name__)
@@ -355,3 +357,136 @@ def decode_base64_url_safe(encoded_str):
     except Exception as e:
         logger.error(f"Error decoding: {e}")
         return None
+
+
+def monitoring_function(**context):
+    logger.info("Running global system monitoring")
+
+    session = get_db_session()
+    start_time = datetime.utcnow() - timedelta(days=1)
+    ti = context.get("task_instance")
+
+    try:
+        # --- MESSAGE METRICS ---
+        message_count = session.query(func.count(Message.message_id)).filter(Message.created_at >= start_time).scalar()
+
+        if message_count >= 20:
+            toxicity_rate = session.query(func.avg(Message.is_toxic.cast(Integer))).filter(Message.created_at >= start_time).scalar()
+            customer_satisfaction = session.query(func.avg(Message.feedback.cast(Integer))).filter(Message.created_at >= start_time).scalar()
+            avg_response_time_ms = session.query(func.avg(Message.response_time_ms)).filter(Message.created_at >= start_time).scalar()
+        else:
+            toxicity_rate = customer_satisfaction = avg_response_time_ms = None
+
+        total_messages = message_count
+
+        # --- EMAIL PROCESSING SUMMARY ---
+        processing = session.query(
+            func.sum(EmailProcessingSummary.total_emails_processed),
+            func.sum(EmailProcessingSummary.total_threads_processed),
+            func.sum(EmailProcessingSummary.failed_emails),
+            func.sum(EmailProcessingSummary.failed_threads),
+        ).filter(EmailProcessingSummary.run_timestamp >= start_time).one()
+
+        # --- EMAIL EMBEDDING SUMMARY ---
+        embedding = session.query(
+            func.sum(EmailEmbeddingSummary.total_emails_embedded),
+            func.sum(EmailEmbeddingSummary.total_threads_embedded),
+            func.sum(EmailEmbeddingSummary.failed_emails),
+            func.sum(EmailEmbeddingSummary.failed_threads),
+        ).filter(EmailEmbeddingSummary.run_timestamp >= start_time).one()
+
+        # --- EMAIL PREPROCESSING SUMMARY ---
+        preprocessing = session.query(
+            func.sum(EmailPreprocessingSummary.total_emails_processed),
+            func.sum(EmailPreprocessingSummary.total_threads_processed),
+            func.sum(EmailPreprocessingSummary.successful_emails),
+            func.sum(EmailPreprocessingSummary.successful_threads),
+            func.sum(EmailPreprocessingSummary.failed_emails),
+            func.sum(EmailPreprocessingSummary.failed_threads),
+        ).filter(EmailPreprocessingSummary.run_timestamp >= start_time).one()
+
+        # --- METRICS DICT ---
+        metrics = {
+            "toxicity_rate": toxicity_rate,
+            "customer_satisfaction": customer_satisfaction,
+            "avg_response_time_ms": avg_response_time_ms,
+            "total_messages": total_messages,
+
+            "emails_processed": processing[0] or 0,
+            "threads_processed": processing[1] or 0,
+            "emails_failed": processing[2] or 0,
+            "threads_failed": processing[3] or 0,
+
+            "emails_embedded": embedding[0] or 0,
+            "threads_embedded": embedding[1] or 0,
+            "embedding_failed_emails": embedding[2] or 0,
+            "embedding_failed_threads": embedding[3] or 0,
+
+            "emails_preprocessed": preprocessing[0] or 0,
+            "threads_preprocessed": preprocessing[1] or 0,
+            "preprocessing_successful_emails": preprocessing[2] or 0,
+            "preprocessing_successful_threads": preprocessing[3] or 0,
+            "preprocessing_failed_emails": preprocessing[4] or 0,
+            "preprocessing_failed_threads": preprocessing[5] or 0,
+        }
+
+        logger.info(f"[MONITORING] Daily Metrics:\n{metrics}")
+
+        # --- THRESHOLD CHECKS ---
+        alerts = []
+        if metrics["toxicity_rate"] is not None and metrics["toxicity_rate"] > 0.10:
+            alerts.append(f"toxicity_rate too high: {metrics['toxicity_rate']:.2%}")
+        if metrics["customer_satisfaction"] is not None and metrics["customer_satisfaction"] < 0.7:
+            alerts.append(f"customer_satisfaction too low: {metrics['customer_satisfaction']:.2f}")
+        if metrics["avg_response_time_ms"] is not None and metrics["avg_response_time_ms"] > 3000:
+            alerts.append(f"avg_response_time_ms too high: {metrics['avg_response_time_ms']:.2f}ms")
+        if metrics["emails_processed"] < 100:
+            alerts.append("emails_processed is below threshold (< 100)")
+        if metrics["total_messages"] < 100:
+            alerts.append("total_messages is below threshold (< 100)")
+
+        embedding_success_rate = metrics["emails_embedded"] / max(metrics["emails_embedded"] + metrics["embedding_failed_emails"], 1)
+        if embedding_success_rate < 0.85:
+            alerts.append(f"embedding success rate too low: {embedding_success_rate:.2%}")
+
+        if alerts:
+            alert_msg = "\n".join(alerts)
+            logger.warning(f"[ALERT] Daily System Alert:\n{alert_msg}")
+            if ti:
+                ti.xcom_push(key="monitoring_alerts", value=alert_msg)
+            raise ValueError(alert_msg)
+
+        return True
+
+    except Exception as e:
+        if ti:
+            ti.xcom_push(key="monitoring_error", value=str(e))
+        logger.exception(f"[ERROR] Monitoring function failed: {str(e)}")
+        raise
+
+    finally:
+        session.close()
+        logger.info("Finished global monitoring run")
+
+
+def generate_monitoring_content(**context):
+    """
+    Generate email subject and body for monitoring alerts.
+    """
+    task_instance = context.get("task_instance")
+    dag_id = task_instance.dag_id
+    alert_msg = context["ti"].xcom_pull(key="monitoring_alerts") or "No alerts"
+    error_msg = context["ti"].xcom_pull(key="monitoring_error") or "No errors"
+
+    subject = f"ALERT: Monitoring Pipeline - {dag_id}"
+    body = f"""
+    <h2>Monitoring Pipeline Alert</h2>
+    
+    <p><strong>DAG:</strong> {dag_id}<br>
+    
+    <p>{alert_msg}</p>
+    
+    <p>{error_msg}</p>
+    """
+
+    return subject, body
