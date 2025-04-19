@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Mail, RefreshCcw, Loader } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { popupCenter } from "@/libs/utils";
 
 interface EmailAccountsListProps {
   connectedEmails: ConnectedEmail[];
@@ -104,14 +105,15 @@ export const EmailAccountsList = ({
   const handleConnectGmail = async () => {
     try {
       const { authorization_url } = await gmailService.getGmailAuthLink();
-      const popup = window.open(
+      const popup = popupCenter(
         authorization_url,
         "Gmail Authentication",
-        "width=600,height=800"
+        400,
+        600
       );
-
-      // Check if popup was blocked
-      if (!popup) {
+      if (popup) {
+        (window as any).gmailAuthPopup = popup;
+      } else {
         toast({
           title: "Error",
           description: "Please allow popups to connect your Gmail account.",
@@ -129,9 +131,9 @@ export const EmailAccountsList = ({
   };
 
   return (
-    <div className="w-full md:w-1/3 p-4 border-r overflow-y-auto flex flex-col">
+    <div className="w-full md:w-1/4 p-4 border-r overflow-y-auto flex flex-col">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold">Connected Email Accounts</h2>
+        <h2 className="text-2xl font-bold">Connected Emails</h2>
         <Button
           variant="outline"
           size="sm"

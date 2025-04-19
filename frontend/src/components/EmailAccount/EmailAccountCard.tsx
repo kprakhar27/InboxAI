@@ -35,16 +35,15 @@ export const EmailAccountCard = ({
 }: EmailAccountCardProps) => {
   const formatDate = (dateString: string) => {
     try {
-      const date = parseISO(dateString);
-      return isValid(date)
-        ? format(date, "MMM d, yyyy 'at' h:mm a")
-        : "Unknown";
+      return dateString
+        ? format(new Date(dateString), "MMM d, yyyy h:mm a")
+        : "";
     } catch (error) {
       return "Invalid date";
     }
   };
   const isActivelyRefreshing =
-    account.current_run_status !== "COMPLETED" || isRefreshing;
+    account.run_status !== "COMPLETED" || isRefreshing;
   return (
     <Card className="relative">
       <CardHeader className="pb-2">
@@ -62,14 +61,12 @@ export const EmailAccountCard = ({
             <span>{account.total_emails_processed} emails processed</span>
           </div>
           <div className="flex items-center gap-2 mb-4">
-            <span>Refresh status: {account.current_run_status}</span>
+            <span>Refresh status: {account.run_status}</span>
           </div>
-          <div className="flex items-center gap-2 mb-4">
-            <span>Connected on: {formatDate(account.connected_since)}</span>
-          </div>
+
           <div className="flex items-center gap-2">
             <RefreshCcw className="h-4 w-4 text-muted-foreground" />
-            <span>Last refreshed: {formatDate(account.last_refresh)}</span>
+            <span>Last refreshed: {formatDate(account.last_read)}</span>
           </div>
           <div className="flex justify-end">
             <AlertDialog>
