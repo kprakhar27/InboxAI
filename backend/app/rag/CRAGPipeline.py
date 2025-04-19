@@ -7,12 +7,10 @@ import pandas as pd
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.pydantic_v1 import BaseModel, Field
-from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 from openai import OpenAI
 from RAGConfig import RAGConfig
 from typing_extensions import TypedDict
-from sklearn.metrics.pairwise import cosine_similarity
 from langchain_groq import ChatGroq
 
 class GraphState(TypedDict):
