@@ -408,14 +408,14 @@ def monitoring_function(**context):
             "total_messages": total_messages,
 
             "emails_processed": processing[0] or 0,
-            "emails_failed": processing[2] or 0,
+            "emails_failed": processing[1] or 0,
 
             "emails_embedded": embedding[0] or 0,
-            "embedding_failed_emails": embedding[2] or 0,
+            "embedding_failed_emails": embedding[1] or 0,
 
             "emails_preprocessed": preprocessing[0] or 0,
-            "preprocessing_successful_emails": preprocessing[2] or 0,
-            "preprocessing_failed_emails": preprocessing[4] or 0,
+            "preprocessing_successful_emails": preprocessing[1] or 0,
+            "preprocessing_failed_emails": preprocessing[2] or 0,
         }
 
         logger.info(f"[MONITORING] Daily Metrics:\n{metrics}")
