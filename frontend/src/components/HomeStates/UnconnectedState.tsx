@@ -18,12 +18,12 @@ const emailProviders = [
     icon: Mail,
     disabled: false,
   },
-  {
-    name: "Outlook",
-    description: "Connect your Microsoft Outlook account",
-    icon: Mail,
-    disabled: true,
-  },
+  // {
+  //   name: "Outlook",
+  //   description: "Connect your Microsoft Outlook account",
+  //   icon: Mail,
+  //   disabled: true,
+  // },
 ];
 
 export const UnconnectedState = () => {
@@ -67,12 +67,12 @@ export const UnconnectedState = () => {
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold mb-4">Welcome to InboxAI</h1>
         <p className="text-xl text-muted-foreground mb-8">
-          Connect your email accounts to get started with AI-powered email
+          Connect your email accounts to get started with RAG-powered email
           management
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+      <div className="grid md:grid-cols-1 gap-6 max-w-2xl mx-auto">
         {emailProviders.map((provider) => (
           <Card
             key={provider.name}

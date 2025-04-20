@@ -51,9 +51,17 @@ const Index = () => {
             </span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto animate-fade-up">
-            Transform your email experience with AI-powered insights, smart
-            automation, and effortless organization.
+            Transform your email experience by asking questions about your
+            emails, past conversations, and important details from your inbox
           </p>
+          <section className="section-padding">
+            <div className="container mx-auto">
+              <h2 className="text-3xl font-bold text-center mb-12">
+                Connect multiple Gmail accounts and ask questions about your
+                emails
+              </h2>
+            </div>
+          </section>
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-up">
             <Button
               size="lg"
@@ -62,26 +70,6 @@ const Index = () => {
             >
               Get Started
             </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="section-padding">
-        <div className="container mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">
-            Powerful Features for Your Inbox
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, index) => (
-              <div
-                key={index}
-                className="animate-fade-up"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <FeatureCard {...feature} />
-              </div>
-            ))}
           </div>
         </div>
       </section>

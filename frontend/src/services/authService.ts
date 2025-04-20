@@ -1,5 +1,5 @@
 
-const API_URL = "https://backend.inboxai.tech";
+const API_URL = "https://test.inboxai.tech";
 interface AuthCredentials {
   username: string;
   password: string;

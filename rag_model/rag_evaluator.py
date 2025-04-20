@@ -108,7 +108,7 @@ def main():
         llm_api_key=os.getenv("GROQ_API_KEY"),
         embedding_api_key=os.getenv("OPENAI_API_KEY"),
     )
-    
+
     rag_config_path = os.path.abspath(
         os.path.join(
             os.path.dirname(__file__), "..", "backend", "app", "rag", sys.argv[1] + ".py"
