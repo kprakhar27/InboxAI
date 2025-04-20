@@ -63,7 +63,7 @@ jobs:
           if [ -f $HOME/vector-database/docker-compose.yml ]
           then
               sleep 30
-              sudo docker-compose -f $HOME/vector-database/docker-compose.yaml up --build -d
+              sudo docker-compose -f $HOME/vector-database/docker-compose.yml up --build -d
           fi
       - name: Check Vector DB heartbeat
         run: |
