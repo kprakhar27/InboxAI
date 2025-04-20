@@ -1,5 +1,5 @@
 wheel
-uwsgi
+gunicorn
 Werkzeug==2.2.2
 Flask==2.2.5
 flask-sqlalchemy
