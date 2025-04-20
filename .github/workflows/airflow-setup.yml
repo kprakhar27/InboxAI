@@ -41,11 +41,11 @@ jobs:
               sudo docker-compose -f $HOME/airflow/docker-compose.yaml down
               sudo rm -rf $HOME/airflow
               sudo mkdir $HOME/airflow
-              sudo cp -r data_pipeline/airflow/* $HOME/airflow
+              sudo cp -r data_pipeline/* $HOME/airflow
           else
               echo "no"
               sudo mkdir -p $HOME/airflow
-              sudo cp -r data_pipeline/airflow/* $HOME/airflow
+              sudo cp -r data_pipeline/* $HOME/airflow
           fi
       - name: Create .env file
         run: |
@@ -54,7 +54,7 @@ jobs:
           cat $HOME/airflow/.env
       - name: Docker Compose Up for Airflow
         run: |
-          sudo docker-compose -f $HOME/airflow/docker-compose.yml up --build -d
+          sudo docker-compose -f $HOME/airflow/docker-compose.yaml up --build -d
       - name: Docker Compose Up for Vector DB
         run: |
           if [ -f $HOME/vector-database/docker-compose.yaml ]
