@@ -43,6 +43,19 @@ jobs:
           touch backend/.env
           echo "${{ secrets.BACKEND_ENV }}" > backend/.env
           cat backend/.env
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies for tests
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+          pip install pytest-cov
+      - name: Run pre-deployment tests
+        run: |
+          pytest backend/tests/
       - name: Authenticate with GCP
         uses: google-github-actions/auth@v2
         with:
