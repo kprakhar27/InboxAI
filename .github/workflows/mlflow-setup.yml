@@ -3,30 +3,32 @@ name: Deploy MlFlow to Server
 on:
   workflow_dispatch:
 
-env:
-  SMTP__SMTP_HOST: smtp.gmail.com
-  SMTP__SMTP_PORT: 465
-  SMTP__SMTP_USER: pc612001@gmail.com
-  SMTP__SMTP_PASSWORD: {{ secrets.SMTP_PASSWORD }}
-  SMTP__SMTP_MAIL_FROM: pc612001@gmail.com
-  SMTP__SMTP_STARTTLS: False
-  SMTP__SMTP_SSL: True
-  AIRFLOW_ALERT_EMAIL: choudhari.pra@northeastern.edu
-  
 jobs:
   deploy:
     runs-on: self-hosted
+    env:
+      SMTP__SMTP_HOST: smtp.gmail.com
+      SMTP__SMTP_PORT: 465
+      SMTP__SMTP_USER: pc612001@gmail.com
+      SMTP__SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      SMTP__SMTP_MAIL_FROM: pc612001@gmail.com
+      SMTP__SMTP_STARTTLS: False
+      SMTP__SMTP_SSL: True
+      AIRFLOW_ALERT_EMAIL: choudhari.pra@northeastern.edu
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
       - name: Create dynamic google_sa.json file
         uses: jsdaniell/create-json@v1.2.3
         with:
           name: "google_sa.json"
           json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
           dir: "mlflow/"
+
       - name: Run setup script
         run: |
           if [ -f $HOME/mlflow/docker-compose.yaml ]
@@ -41,14 +43,17 @@ jobs:
               sudo mkdir -p $HOME/mlflow
               sudo cp -r mlflow/* $HOME/mlflow
           fi
+
       - name: Populate .env file
         run: |
           sudo chown -R $(whoami) $HOME/mlflow
           echo "${{ secrets.MLFLOW_ENV }}" > $HOME/mlflow/.env
           cat $HOME/mlflow/.env
+
       - name: Docker Compose Up for MlFlow
         run: |
           sudo docker-compose -f $HOME/mlflow/docker-compose.yml up --build -d
+
       - name: Check MlFlow heartbeat
         run: |
           sleep 30
@@ -60,36 +65,44 @@ jobs:
             echo "❌ MLflow health check failed"
             exit 1
           fi
+
   notify:
     runs-on: ubuntu-latest
     if: always()
     needs: deploy
+    env:
+      SMTP__SMTP_HOST: smtp.gmail.com
+      SMTP__SMTP_PORT: 465
+      SMTP__SMTP_USER: pc612001@gmail.com
+      SMTP__SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      SMTP__SMTP_MAIL_FROM: pc612001@gmail.com
+      AIRFLOW_ALERT_EMAIL: choudhari.pra@northeastern.edu
 
     steps:
       - name: Notify Success
         if: success()
         uses: dawidd6/action-send-mail@v4
         with:
-          server_address: $SMTP__SMTP_HOST
-          server_port: $SMTP__SMTP_PORT
-          username: $SMTP__SMTP_USER
-          password: $SMTP__SMTP_PASSWORD
+          server_address: ${{ env.SMTP__SMTP_HOST }}
+          server_port: ${{ env.SMTP__SMTP_PORT }}
+          username: ${{ env.SMTP__SMTP_USER }}
+          password: ${{ env.SMTP__SMTP_PASSWORD }}
           subject: "MLflow Deployment Successful"
-          to: $AIRFLOW_ALERT_EMAIL
-          from: $SMTP__SMTP_MAIL_FROM
+          to: ${{ env.AIRFLOW_ALERT_EMAIL }}
+          from: ${{ env.SMTP__SMTP_MAIL_FROM }}
           secure: true
           body: "MLflow has been successfully deployed to the server."
-      
+
       - name: Notify Failure
         if: failure()
         uses: dawidd6/action-send-mail@v4
         with:
-          server_address: $SMTP__SMTP_HOST
-          server_port: $SMTP__SMTP_PORT
-          username: $SMTP__SMTP_USER
-          password: $SMTP__SMTP_PASSWORD
+          server_address: ${{ env.SMTP__SMTP_HOST }}
+          server_port: ${{ env.SMTP__SMTP_PORT }}
+          username: ${{ env.SMTP__SMTP_USER }}
+          password: ${{ env.SMTP__SMTP_PASSWORD }}
           subject: "MLflow Deployment Failed"
-          to: $AIRFLOW_ALERT_EMAIL
-          from: $SMTP__SMTP_MAIL_FROM
+          to: ${{ env.AIRFLOW_ALERT_EMAIL }}
+          from: ${{ env.SMTP__SMTP_MAIL_FROM }}
           secure: true
           body: "MLflow deployment has failed. Please check the logs."
