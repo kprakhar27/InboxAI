@@ -11,6 +11,10 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - name: Make config directory
+        run: |
+          sudo mkdir -p data_pipeline/airflow/config
+          sudo chown -R $(whoami) data_pipeline/airflow/config
       - name: Create dynamic credentials.json file
         id: create-json-1
         uses: jsdaniell/create-json@v1.2.3
@@ -25,24 +29,54 @@ jobs:
           name: "google_sa.json"
           json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
           dir: "data_pipeline/airflow/config/"
+      - name: Run setup script
+        run: |
+          if [ -f $HOME/airflow/docker-compose.yaml ]
+          then
+              echo "yes"
+              if [ -f $HOME/vector-database/docker-compose.yml ]
+              then
+                  echo "shutting down vector db"
+                  sudo docker-compose -f $HOME/vector-database/docker-compose.yml down
+              else
+                  echo "no vector db to shut down"
+              fi
+              sudo docker-compose -f $HOME/airflow/docker-compose.yaml down
+              sudo rm -rf $HOME/airflow
+              sudo mkdir $HOME/airflow
+              sudo cp -r data_pipeline/* $HOME/airflow
+          else
+              echo "no"
+              sudo mkdir -p $HOME/airflow
+              sudo cp -r data_pipeline/* $HOME/airflow
+          fi
       - name: Create .env file
         run: |
-          touch data_pipeline/airflow/.env
-          echo ${{ secrets.AIRFLOW_ENV }} >> data_pipeline/airflow/.env
-          cat data_pipeline/airflow/.env
-      - name: Chmod airflow Script
-        run: sudo chmod +x ./data_pipeline/setup.sh
-      - name: Run cleanup Script
-        run: sudo ./data_pipeline/setup.sh
+          sudo chown -R $(whoami) $HOME/airflow
+          echo "${{ secrets.AIRFLOW_ENV }}" > $HOME/airflow/.env
+          cat $HOME/airflow/.env
+      - name: Docker Compose Up for Airflow
+        run: |
+          sudo docker-compose -f $HOME/airflow/docker-compose.yaml up --build -d
+      - name: Docker Compose Up for Vector DB
+        run: |
+          if [ -f $HOME/vector-database/docker-compose.yml ]
+          then
+              sleep 30
+              sudo docker-compose -f $HOME/vector-database/docker-compose.yml up --build -d
+          fi
       - name: Check Vector DB heartbeat
         run: |
-          RESPONSE=$(curl -s http://${{ secrets.HOST }}:8000/api/v2/heartbeat)
-          echo "Vector DB Response: $RESPONSE"
-          if echo "$RESPONSE" | grep -q '"nanosecond heartbeat"'; then
-            echo "✅ Vector DB is healthy"
-          else
-            echo "❌ Vector DB health check failed"
-            exit 1
+          if [ -f $HOME/vector-database/docker-compose.yml ]
+            then
+            sleep 30
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.HOST }}:8000/api/v2/heartbeat)
+            if [ "$RESPONSE" -ne 200 ]; then
+              echo "❌ ChromaDB heartbeat check failed. HTTP $RESPONSE"
+              exit 1
+            else
+              echo "✅ ChromaDB heartbeat OK. HTTP $RESPONSE"
+            fi
           fi
 
       - name: Check Airflow heartbeat

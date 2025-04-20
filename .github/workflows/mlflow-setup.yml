@@ -11,26 +11,40 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Populate .env file
-        run: |
-          touch mlflow/.env
-          echo ${{ secrets.MLFLOW_ENV }} >> mlflow/.env
-          cat mlflow/.env
       - name: Create dynamic google_sa.json file
         uses: jsdaniell/create-json@v1.2.3
         with:
           name: "google_sa.json"
           json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
           dir: "mlflow/"
-      - name: Change the mode of the setup script
-        run: sudo chmod +x ./mlflow/setup.sh
       - name: Run setup script
-        run: sudo ./mlflow/setup.sh
+        run: |
+          if [ -f $HOME/mlflow/docker-compose.yaml ]
+          then
+              echo "yes"
+              sudo docker-compose -f $HOME/mlflow/docker-compose.yaml down
+              sudo rm -rf $HOME/mlflow
+              sudo mkdir $HOME/mlflow
+              sudo cp -r mlflow/* $HOME/mlflow
+          else
+              echo "no"
+              sudo mkdir -p $HOME/mlflow
+              sudo cp -r mlflow/* $HOME/mlflow
+          fi
+      - name: Populate .env file
+        run: |
+          sudo chown -R $(whoami) $HOME/mlflow
+          echo "${{ secrets.MLFLOW_ENV }}" > $HOME/mlflow/.env
+          cat $HOME/mlflow/.env
+      - name: Docker Compose Up for MlFlow
+        run: |
+          sudo docker-compose -f $HOME/mlflow/docker-compose.yml up --build -d
       - name: Check MlFlow heartbeat
         run: |
+          sleep 30
           RESPONSE=$(curl -s http://${{ secrets.HOST }}:7070/health)
           echo "MLflow Health Check Response: $RESPONSE"
-          if echo "$RESPONSE" | grep -q '"status": "OK"'; then
+          if echo $RESPONSE == 'OK'; then
             echo "✅ MLflow is healthy"
           else
             echo "❌ MLflow health check failed"

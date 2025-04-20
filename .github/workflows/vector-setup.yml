@@ -25,19 +25,31 @@ jobs:
             echo "❌ Airflow health check failed"
             exit 1
           fi
-      - name: Change the mode of the setup script
-        run: sudo chmod +x ./vector_db/setup.sh
       - name: Run setup script
-        run: sudo ./vector_db/setup.sh
+        run: |
+          if [ -f $HOME/vector-database/docker-compose.yml ]
+          then
+              echo "yes"
+              sudo docker-compose -f $HOME/vector-database/docker-compose.yml down
+              sudo rm -rf $HOME/vector-database/docker-compose.yml
+              sudo cp -r vector_db/docker-compose.yml $HOME/vector-database/docker-compose.yml
+          else
+              echo "no"
+              sudo mkdir -p $HOME/vector-database
+              sudo cp -r vector_db/docker-compose.yml $HOME/vector-database/docker-compose.yml
+          fi
+      - name: Docker Compose Up for Vector DB
+        run: |
+          sudo docker-compose -f $HOME/vector-database/docker-compose.yml up --build -d
       - name: Check Vector DB heartbeat
         run: |
-          RESPONSE=$(curl -s http://${{ secrets.HOST }}:8000/api/v2/heartbeat)
-          echo "Vector DB Response: $RESPONSE"
-          if echo "$RESPONSE" | grep -q '"nanosecond heartbeat"'; then
-            echo "✅ Vector DB is healthy"
-          else
-            echo "❌ Vector DB health check failed"
+          sleep 30
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.HOST }}:8000/api/v2/heartbeat)
+          if [ "$RESPONSE" -ne 200 ]; then
+            echo "❌ ChromaDB heartbeat check failed. HTTP $RESPONSE"
             exit 1
+          else
+            echo "✅ ChromaDB heartbeat OK. HTTP $RESPONSE"
           fi
       - name: Success
         run: echo "✅ Vector DB deployed successfully!"

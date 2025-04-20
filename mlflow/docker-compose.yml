@@ -6,8 +6,6 @@ services:
       - "${MLFLOW_PORT}:${MLFLOW_PORT}"
     volumes:
       - ./google_sa.json:/google_sa.json:ro
-      # Add volume mount for GCP credentials
-      - $HOME/.config/gcloud:/root/.config/gcloud:ro
     environment:
       - GOOGLE_APPLICATION_CREDENTIALS=/google_sa.json
       - MLFLOW_TRACKING_USERNAME=${MLFLOW_TRACKING_USERNAME}

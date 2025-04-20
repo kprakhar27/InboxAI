@@ -1,16 +1,14 @@
 home_vector_path=$(pwd)/vector_db
-vector_path=~/vector-database
+vector_path=/home/ubuntu/vector-database
 
-if [ -f $vector_path/docker-compose.yaml ]
+if [ -f $HOME/vector-database/docker-compose.yml ]
 then
     echo "yes"
-    docker-compose -f $vector_path/docker-compose.yaml down
-    rm -rf $vector_path
-    mkdir $vector_path
-    cp -r $home_vector_path/* $vector_path
+    docker-compose -f $HOME/vector-database/docker-compose.yml down
+    rm -rf $HOME/vector-database/docker-compose.yml
+    cp -r vector_db/docker-compose.yml $HOME/vector-database/docker-compose.yml
 else
     echo "no"
-    cp -r $home_vector_path/* $vector_path
+    mkdir -p $HOME/vector-database
+    cp -r vector_db/docker-compose.yml $HOME/vector-database/docker-compose.yml
 fi
-
-docker-compose -f $vector_path/docker-compose.yaml up --build -d

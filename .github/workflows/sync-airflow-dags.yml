@@ -5,10 +5,30 @@ on:
     branches: [main]
     paths:
       - 'data_pipeline/airflow/dags/**'  # Only trigger on DAG changes
-  
+  workflow_dispatch:
 
 jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r data_pipeline/airflow/requirements.txt
+      - name: Run tests
+        run: |
+          pytest data_pipeline/airflow/tests
+          echo "Running tests..."
   deploy:
+    needs: build-and-test
     runs-on: self-hosted
     steps:
       - name: Checkout code
@@ -17,11 +37,14 @@ jobs:
           fetch-depth: 0
       - name: Copy DAGs to Airflow
         run: |
-          # Copy the DAGs to the Airflow directory
-          cp -r data_pipeline/airflow/dags/* ~/airflow/dags/
-          # Restart Airflow to pick up the new DAGs
-          sudo systemctl restart airflow-webserver
-          sudo systemctl restart airflow-scheduler
+          sudo rm -rf $HOME/airflow/dags/*
+          sudo mkdir -p $HOME/airflow/dags
+          sudo chown -R $(whoami) $HOME/airflow/dags
+          sudo cp -r data_pipeline/airflow/dags/* $HOME/airflow/dags/
+      - name: Restart Airflow
+        run: |
+          sudo systemctl restart airflow_airflow-webserver_1
+          sudo systemctl restart airflow_airflow-scheduler_1
       - name: Check Airflow heartbeat
         run: |
           RESPONSE=$(curl -s http://${{ secrets.HOST }}:8080/health)
