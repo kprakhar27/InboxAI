@@ -4,7 +4,7 @@ mlflow_path=/home/ubuntu/mlflow
 if [ -f $mlflow_path/docker-compose.yaml ]
 then
     echo "yes"
-    docker-compose -f $mlflow_path/docker-compose.yaml down
+    docker-compose -f $mlflow_path/docker-compose.yml down
     rm -rf $mlflow_path
     mkdir $mlflow_path
     cp -r $home_mlflow_path/* $mlflow_path
@@ -15,4 +15,4 @@ else
     ls -l $mlflow_path
 fi
 
-docker-compose -f $mlflow_path/docker-compose.yaml up --build -d
+docker-compose -f $mlflow_path/docker-compose.yml up --build -d
