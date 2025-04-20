@@ -52,7 +52,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
           pip install pytest pytest-cov
-
       - name: Run pre-deployment tests
         run: |
           cd backend
