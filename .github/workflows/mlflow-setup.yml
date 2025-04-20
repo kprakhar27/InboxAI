@@ -19,26 +19,26 @@ jobs:
           dir: "mlflow/"
       - name: Run setup script
         run: |
-          if [ -f /home/ubuntu/mlflow/docker-compose.yaml ]
+          if [ -f $HOME/mlflow/docker-compose.yaml ]
           then
               echo "yes"
-              sudo docker-compose -f /home/ubuntu/mlflow/docker-compose.yaml down
-              sudo rm -rf /home/ubuntu/mlflow
-              sudo mkdir /home/ubuntu/mlflow
-              sudo cp -r mlflow/* /home/ubuntu/mlflow
+              sudo docker-compose -f $HOME/mlflow/docker-compose.yaml down
+              sudo rm -rf $HOME/mlflow
+              sudo mkdir $HOME/mlflow
+              sudo cp -r mlflow/* $HOME/mlflow
           else
               echo "no"
-              sudo mkdir -p /home/ubuntu/mlflow
-              sudo cp -r mlflow/* /home/ubuntu/mlflow
+              sudo mkdir -p $HOME/mlflow
+              sudo cp -r mlflow/* $HOME/mlflow
           fi
       - name: Populate .env file
         run: |
-          sudo touch /home/ubuntu/mlflow/.env
-          echo "${{ secrets.MLFLOW_ENV }}" > /home/ubuntu/mlflow/.env
-          cat /home/ubuntu/mlflow/.env
+          sudo touch $HOME/mlflow/.env
+          echo "${{ secrets.MLFLOW_ENV }}" > $HOME/mlflow/.env
+          cat $HOME/mlflow/.env
       - name: Docker Compose Up for MlFlow
         run: |
-          sudo docker-compose -f /home/ubuntu/mlflow/docker-compose.yml up --build -d
+          sudo docker-compose -f $HOME/mlflow/docker-compose.yml up --build -d
       - name: Check MlFlow heartbeat
         run: |
           RESPONSE=$(curl -s http://${{ secrets.HOST }}:7070/health)
