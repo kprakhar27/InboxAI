@@ -14,7 +14,7 @@ jobs:
       - name: Populate .env file
         run: |
           touch mlflow/.env
-          echo ${{ secrets.MLFLOW_ENV }} >> mlflow/.env
+          echo "${{ secrets.MLFLOW_ENV }}" > mlflow/.env
           cat mlflow/.env
       - name: Create dynamic google_sa.json file
         uses: jsdaniell/create-json@v1.2.3
