@@ -58,12 +58,6 @@ const Login = () => {
         if (data.access_token) {
           localStorage.setItem("token", data.access_token);
         }
-        toast({
-          title: isLogin ? "Login successful" : "Registration successful",
-          description: isLogin
-            ? "Welcome back!"
-            : "Your account has been created.",
-        });
         navigate("/");
       } else {
         const errorData = await response
