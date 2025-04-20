@@ -11,37 +11,83 @@ import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
 from openai import OpenAI
-from RAGBiasAnalyzer import RAGBiasAnalyzer
-from RAGConfig import RAGConfig
-from RAGEvaluator import RAGEvaluator
 from sklearn.metrics.pairwise import cosine_similarity
 import traceback
 
-load_dotenv()
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from RAGBiasAnalyzer import RAGBiasAnalyzer
+from RAGEvaluator import RAGEvaluator
+from backend.app.rag.RAGConfig import RAGConfig
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+import uuid
+from backend.app.models import db, RAG
 
 # Initialize MLflow
 mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
 
-
-def get_class_from_input(module_name, class_name):
+print(os.getenv("GROQ_API_KEY"))
+def get_class_from_input(module_path: str, class_name: str):
     """
-    Dynamically imports a class from a module specified by string input.
-
+    Dynamically load a class from a given file path.
+    
     Args:
-        module_name (str): The name of the module to import (e.g., "my_module").
-        class_name (str): The name of the class to retrieve (e.g., "MyClass").
+        module_path: str – full path to the .py file
+        class_name: str – class name defined in that module
 
     Returns:
-        type: The class object if found, otherwise None.
+        class object
     """
-    try:
-        module = importlib.import_module(module_name)
-        target_class = getattr(module, class_name)
-        return target_class
-    except (ImportError, AttributeError) as e:
-        print(e)
-        traceback.print_exc()
-        return None
+    # logger.debug(f"Attempting to load class '{class_name}' from {module_path}")
+    module_name = os.path.splitext(os.path.basename(module_path))[0]  # e.g., RAGConfig
+    # logger.debug(f"Module name: {module_name}")
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+
+    if spec is None or spec.loader is None:
+        # logger.error(f"Error: Could not load spec for {module_path}")
+        raise ImportError(f"Could not load spec for {module_path}")
+
+    # logger.debug(f"Successfully loaded spec for {module_name}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    # logger.debug(f"Executing module {module_name}")
+    spec.loader.exec_module(module)
+
+    if not hasattr(module, class_name):
+        # logger.error(f"Error: Class '{class_name}' not found in {module_path}")
+        raise ImportError(f"Class '{class_name}' not found in {module_path}")
+
+    # logger.debug(f"Successfully loaded class '{class_name}' from {module_path}")
+    return getattr(module, class_name)
+
+def check_llm_results(results, thresholds):
+    """Check if LLM evaluation results exceed the given thresholds.
+
+    Args:
+        results (dict): LLM evaluation results.
+        thresholds (dict): Threshold values for evaluation.
+
+    Returns:
+        dict: Boolean flags indicating if each category passes and overall result.
+    """
+    def check_metrics(metrics, threshold_metrics):
+        return all(metrics.get(key, 0) >= threshold_metrics.get(key, 0) for key in threshold_metrics)
+
+    embedding_pass = check_metrics(results["embedding_evaluation"], thresholds["embedding_evaluation"])
+
+    top_k_pass = all(
+        results["top_k_evaluation"][k]["answer_accuracy"] >= thresholds["top_k_evaluation"].get(k, 0)
+        for k in thresholds["top_k_evaluation"]
+    )
+
+    rag_pass = check_metrics(results["rag_evaluation"], thresholds["rag_evaluation"])
+
+    return {
+        "embedding_pass": embedding_pass,
+        "top_k_pass": top_k_pass,
+        "rag_pass": rag_pass,
+        "overall_pass": embedding_pass or top_k_pass or rag_pass
+    }
 
 
 def main():
@@ -62,11 +108,18 @@ def main():
         llm_api_key=os.getenv("GROQ_API_KEY"),
         embedding_api_key=os.getenv("OPENAI_API_KEY"),
     )
+    
+    rag_config_path = os.path.abspath(
+        os.path.join(
+            os.path.dirname(__file__), "..", "backend", "app", "rag", sys.argv[1] + ".py"
+        )
+    )
 
     # Handle different argument scenarios
     if len(sys.argv) == 3:
+        
         # Original 2-argument scenario (pipeline name and run name)
-        Pipeline = get_class_from_input(sys.argv[1], sys.argv[1])
+        Pipeline = get_class_from_input(rag_config_path, sys.argv[1])
         print(Pipeline)
 
         if Pipeline:
@@ -78,10 +131,82 @@ def main():
 
             # Run evaluation
             results = evaluator.run_full_evaluation(sys.argv[2])
+            
+            print(results)
+            
+            # Save results to database if performance meets threshold
+            try:
+                thresholds = {
+                    'embedding_evaluation': {
+                        'retrieval_precision': 0.2,
+                        'retrieval_recall': 0.2,
+                        'retrieval_f1': 0.2
+                    },
+                    'top_k_evaluation': {
+                        'top_k_1': 0.2,
+                        'top_k_3': 0.2,
+                        'top_k_5': 0.2
+                    },
+                    'rag_evaluation': {
+                        'bleu_score': 0.2,
+                        'llm_judge_accuracy': 0.2,
+                        'llm_judge_relevance': 0.2,
+                        'llm_judge_completeness': 0.2
+                    }
+                }
+                llms = check_llm_results(results, thresholds)
+                # Create database session
+                DB_USER = os.getenv("DB_USER")
+                DB_PASSWORD = os.getenv("DB_PASSWORD")
+                DB_HOST = os.getenv("DB_HOST")
+                DB_PORT = os.getenv("DB_PORT")
+                DB_NAME = os.getenv("DB_NAME")
+                engine = create_engine(f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
+                Session = sessionmaker(bind=engine)
+                session = Session()
+                        
+                # Check if RAG model already exists in database
+                existing_rag = session.query(RAG).filter_by(rag_name=sys.argv[1]).first()              
+                if llms["overall_pass"]:
+                    if existing_rag:
+                        # Update existing RAG model
+                        existing_rag.is_available = True
+                        session.commit()
+                        print(f"Updated existing RAG model '{sys.argv[1]}' in database with True availability")
+                    else:
+                        # Add new RAG model to database
+                        new_rag = RAG(
+                            rag_id=uuid.uuid4(),
+                            rag_name=sys.argv[1],
+                            is_available=True
+                        )
+                        session.add(new_rag)
+                        print(f"RAG model '{sys.argv[1]}' added to database with True availability")
+                else:
+                    if existing_rag:
+                        # Update existing RAG model
+                        existing_rag.is_available = False
+                        session.commit()
+                        print(f"Updated existing RAG model '{sys.argv[1]}' in database with False availability")
+                    else:
+                        # Add new RAG model to database
+                        new_rag = RAG(
+                            rag_id=uuid.uuid4(),
+                            rag_name=sys.argv[1],
+                            is_available=False
+                        )
+                        session.add(new_rag)
+                    print(f"RAG model '{sys.argv[1]}' added to database with False availability")
+                session.commit()
+                session.close()
+                print("Evaluation Complete!")
+            except Exception as e:
+                print(f"Failed to save to database: {e}")
+                traceback.print_exc()
 
     elif len(sys.argv) == 4:
         # New 3-argument scenario (pipeline name, eval run name, bias run name)
-        Pipeline = get_class_from_input(sys.argv[1], sys.argv[1])
+        Pipeline = get_class_from_input(rag_config_path, sys.argv[1])
         print(Pipeline)
 
         if Pipeline:

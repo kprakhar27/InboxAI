@@ -259,7 +259,7 @@ class RAGEvaluator:
         """
         
         judge_response = self.client.chat.completions.create(
-            model="gpt-4",
+            model="llama3-8b-8192",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1
         )
@@ -292,7 +292,7 @@ class RAGEvaluator:
             # Evaluate top-k strategies
             print("Evaluating top-k strategies...")
             top_k_results = self.evaluate_top_k_strategy( 
-                k_values=[1, 3, 5, 10]
+                k_values=[1, 3, 5]
             )
             
             # Evaluate full RAG system
