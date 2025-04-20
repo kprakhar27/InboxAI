@@ -33,7 +33,7 @@ jobs:
           fi
       - name: Populate .env file
         run: |
-          touch /home/ubuntu/mlflow/.env
+          sudo touch /home/ubuntu/mlflow/.env
           echo "${{ secrets.MLFLOW_ENV }}" > /home/ubuntu/mlflow/.env
           cat /home/ubuntu/mlflow/.env
       - name: Docker Compose Up for MlFlow
