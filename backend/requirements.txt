@@ -16,6 +16,7 @@ google-auth-httplib2
 google-api-python-client
 google-cloud-storage
 google-cloud-secret-manager
+google-cloud-logging
 DateTime
 beautifulsoup4
 chromadb>=0.4.6
