@@ -1,4 +1,4 @@
-import { Settings, User, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useState } from "react";
@@ -18,28 +18,6 @@ export const TopNav = () => {
         </Link>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hover:bg-[#b5adff]"
-            asChild
-          >
-            <Link to="/settings/preferences">
-              <Settings className="h-5 w-5" />
-            </Link>
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hover:bg-[#b5adff]"
-            asChild
-          >
-            <Link to="/settings/account">
-              <User className="h-5 w-5" />
-            </Link>
-          </Button>
-
           <Button
             variant="ghost"
             size="icon"

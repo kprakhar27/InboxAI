@@ -4,11 +4,10 @@ const API_URL = "https://backend.inboxai.tech";
 export interface ConnectedEmail {
   email: string;
   total_emails_processed: number;
-  last_refresh: string;
+  last_read: string;
   connected_since: string;
-  current_run_status: string;
+  run_status: string;
   expires_at: string;
-  refresh_token: string;
 }
 
 export interface ConnectedEmailsResponse {
@@ -131,7 +130,7 @@ export const gmailService = {
   },
 
   async fetchAndRefreshEmail(emails: string[]) {
-    const response = await fetch(`${API_URL}/api/fetchandrefreshemail`, {
+    const response = await fetch(`${API_URL}/api/refreshemails`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -277,7 +276,7 @@ export const gmailService = {
     return messages;
   },
   
-  async createChat(name?: string): Promise<{ id: string; name: string }> {
+  async createChat(name?: string): Promise<{ chat_id: string; name: string }> {
     const response = await fetch(`${API_URL}/api/createchat`, {
       method: 'POST',
       headers: {

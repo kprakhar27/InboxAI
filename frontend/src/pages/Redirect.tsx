@@ -14,6 +14,13 @@ const Redirect = () => {
         await gmailService.saveGoogleToken(
           window.location.href.replace("#/", "")
         );
+        if (window.opener && window.opener.gmailAuthPopup) {
+          window.opener.gmailAuthPopup.close();
+          delete window.opener.gmailAuthPopup;
+
+          // Trigger a soft refresh on the parent page
+          window.opener.location.reload();
+        }
         toast({
           title: "Success",
           description: "Gmail account connected successfully!",

@@ -45,7 +45,11 @@ export const ConnectedState = ({
       />
 
       {/* Right panel - Chat */}
-      <ChatInterface chatId={currentChatId} onChatCreated={handleChatCreated} />
+      <ChatInterface
+        chatId={currentChatId}
+        onChatCreated={handleChatCreated}
+        onNewChat={handleNewChat}
+      />
     </div>
   );
 };
