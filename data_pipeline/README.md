@@ -106,6 +106,6 @@ By following these steps, you will have a fully functional data pipeline environ
 
 To access the Airflow UI, follow these steps:
 
-**Open Airflow UI**: Open your web browser and navigate to `http://localhost:8080`. You should see the Airflow login page.
+**Open Airflow UI**: Open your web browser and navigate to `http://{HOST}:8080`. You should see the Airflow login page.
 
 Once logged in, you will have access to the Airflow UI where you can monitor and manage your data pipeline workflows.
