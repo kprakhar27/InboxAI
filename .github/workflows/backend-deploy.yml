@@ -8,6 +8,13 @@ on:
   #   branches: ["main"]
   #   paths: ["backend/**"]
   workflow_dispatch:
+
+env:
+  PROJECT_ID: inboxai-449918
+  REGION: us-central1
+  REPOSITORY: flask-repo
+  IMAGE_NAME: flask-app
+  SERVICE: flask-api
   
 jobs:
   deploy:
@@ -36,10 +43,10 @@ jobs:
           touch backend/.env
           echo "${{ secrets.BACKEND_ENV }}" > backend/.env
           cat backend/.env
-          - name: Authenticate with GCP
-          uses: google-github-actions/auth@v2
-          with:
-            credentials_json: '${{ secrets.GCP_SA_KEY }}'
+      - name: Authenticate with GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
     
       - name: Set up gcloud SDK
         uses: google-github-actions/setup-gcloud@v1
@@ -53,7 +60,7 @@ jobs:
       - name: Build and Push Docker Image
         run: |
           IMAGE="$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME"
-          docker build -t $IMAGE .
+          docker build -t $IMAGE backend/.
           docker push $IMAGE
     
       - name: Deploy to Cloud Run
