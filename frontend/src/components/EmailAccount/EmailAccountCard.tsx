@@ -39,7 +39,7 @@ export const EmailAccountCard = ({
         ? format(new Date(dateString), "MMM d, yyyy h:mm a")
         : "";
     } catch (error) {
-      return "Invalid date";
+      return "-";
     }
   };
   const isActivelyRefreshing =

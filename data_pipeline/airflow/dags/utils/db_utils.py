@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from dotenv import load_dotenv
-from models_postgres import (
+from dags.models_postgres import (
     EmailEmbeddingSummary,
     EmailPreprocessingSummary,
     EmailProcessingSummary,

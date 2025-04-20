@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'data_pipeline/airflow/dags/**'  # Only trigger on DAG changes
+      - "data_pipeline/airflow/dags/**" # Only trigger on DAG changes
   workflow_dispatch:
 
 jobs:
@@ -18,14 +18,14 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r data_pipeline/requirements.txt
       - name: Run tests
         run: |
-          pytest data_pipeline/airflow/tests
+          pytest data_pipeline/airflow/dags/tests/ -v -W ignore::DeprecationWarning
           echo "Running tests..."
   deploy:
     needs: build-and-test
@@ -50,10 +50,10 @@ jobs:
           sleep 30
           RESPONSE=$(curl -s http://${{ secrets.HOST }}:8080/health)
           echo "Airflow Response: $RESPONSE"
-          
+
           SCHEDULER_HEALTH=$(echo "$RESPONSE" | jq -r '.scheduler.status')
           TRIGGERER_HEALTH=$(echo "$RESPONSE" | jq -r '.triggerer.status')
-          
+
           if [[ "$SCHEDULER_HEALTH" == "healthy" && "$TRIGGERER_HEALTH" == "healthy" ]]; then
             echo "✅ Airflow scheduler and triggerer are healthy"
           else
@@ -62,7 +62,7 @@ jobs:
           fi
       - name: Success
         run: echo "✅ DAGs synced successfully!"
-  
+
   notify:
     runs-on: ubuntu-latest
     if: always()
