@@ -43,8 +43,8 @@ jobs:
           sudo cp -r data_pipeline/airflow/dags/* $HOME/airflow/dags/
       - name: Restart Airflow
         run: |
-          sudo systemctl restart airflow_airflow-webserver_1
-          sudo systemctl restart airflow_airflow-scheduler_1
+          sudo docker restart airflow_airflow-webserver_1
+          sudo docker restart airflow_airflow-scheduler_1
       - name: Check Airflow heartbeat
         run: |
           RESPONSE=$(curl -s http://${{ secrets.HOST }}:8080/health)
