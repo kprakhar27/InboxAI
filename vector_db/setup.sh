@@ -13,5 +13,3 @@ else
     mkdir -p $vector_path
     cp -r $home_vector_path/* $vector_path
 fi
-
-docker-compose -f $vector_path/docker-compose.yaml up --build -d
