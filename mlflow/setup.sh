@@ -12,6 +12,7 @@ else
     echo "no"
     mkdir -p $mlflow_path
     cp -r $home_mlflow_path/* $mlflow_path
+    ls -l $mlflow_path
 fi
 
 docker-compose -f $mlflow_path/docker-compose.yaml up --build -d
