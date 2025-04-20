@@ -34,7 +34,7 @@ jobs:
           if [ -f $HOME/airflow/docker-compose.yaml ]
           then
               echo "yes"
-              if [-f $HOME/vector-database/docker-compose.yaml]
+              if [-f $HOME/vector-database/docker-compose.yml]
               then
                   sudo docker-compose -f $HOME/vector-database/docker-compose.yaml down
               fi
@@ -57,20 +57,23 @@ jobs:
           sudo docker-compose -f $HOME/airflow/docker-compose.yaml up --build -d
       - name: Docker Compose Up for Vector DB
         run: |
-          if [ -f $HOME/vector-database/docker-compose.yaml ]
+          if [ -f $HOME/vector-database/docker-compose.yml ]
           then
               sleep 30
               sudo docker-compose -f $HOME/vector-database/docker-compose.yaml up --build -d
           fi
       - name: Check Vector DB heartbeat
         run: |
-          RESPONSE=$(curl -s http://${{ secrets.HOST }}:8000/api/v2/heartbeat)
-          echo "Vector DB Response: $RESPONSE"
-          if echo "$RESPONSE" | grep -q '"nanosecond heartbeat"'; then
-            echo "✅ Vector DB is healthy"
-          else
-            echo "❌ Vector DB health check failed"
-            exit 1
+          if [ -f $HOME/vector-database/docker-compose.yml ]
+            then
+            RESPONSE=$(curl -s http://${{ secrets.HOST }}:8000/api/v2/heartbeat)
+            echo "Vector DB Response: $RESPONSE"
+            if echo "$RESPONSE" | grep -q '"nanosecond heartbeat"'; then
+              echo "✅ Vector DB is healthy"
+            else
+              echo "❌ Vector DB health check failed"
+              exit 1
+            fi
           fi
 
       - name: Check Airflow heartbeat

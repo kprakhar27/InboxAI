@@ -25,10 +25,22 @@ jobs:
             echo "❌ Airflow health check failed"
             exit 1
           fi
-      - name: Change the mode of the setup script
-        run: sudo chmod +x ./vector_db/setup.sh
       - name: Run setup script
-        run: sudo ./vector_db/setup.sh
+        run: |
+          if [ -f $HOME/vector-database/docker-compose.yml ]
+          then
+              echo "yes"
+              docker-compose -f $HOME/vector-database/docker-compose.yml down
+              rm -rf $HOME/vector-database/docker-compose.yml
+              cp -r vector_db/docker-compose.yml $HOME/vector-database/docker-compose.yml
+          else
+              echo "no"
+              mkdir -p $HOME/vector-database
+              cp -r vector_db/docker-compose.yml $HOME/vector-database/docker-compose.yml
+          fi
+      - name: Docker Compose Up for Vector DB
+        run: |
+          docker-compose -f $HOME/vector-database/docker-compose.yml up --build -d
       - name: Check Vector DB heartbeat
         run: |
           RESPONSE=$(curl -s http://${{ secrets.HOST }}:8000/api/v2/heartbeat)
