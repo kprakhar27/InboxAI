@@ -17,12 +17,11 @@ jobs:
           echo ${{ secrets.MLFLOW_ENV }} >> mlflow/.env
           cat mlflow/.env
       - name: Create dynamic google_sa.json file
-        id: create-json-1
         uses: jsdaniell/create-json@v1.2.3
         with:
           name: "google_sa.json"
           json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
-          dir: "mlflow/config/"
+          dir: "mlflow/"
       - name: Change the mode of the setup script
         run: sudo chmod +x ./mlflow/setup.sh
       - name: Run setup script
