@@ -52,7 +52,8 @@ jobs:
           pip install pytest-cov
       - name: Run pre-deployment tests
         run: |
-          pytest backend/tests/
+          cd backend
+          pytest
       - name: Authenticate with GCP
         uses: google-github-actions/auth@v2
         with:
