@@ -11,7 +11,7 @@ from google.auth.transport.requests import Request
 from google.cloud.logging.handlers import CloudLoggingHandler
 from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
-from models_postgres import GoogleToken
+from dags.models_postgres import GoogleToken
 from tasks.email_fetch_tasks import send_failure_email
 from utils.airflow_utils import failure_callback
 from utils.db_utils import get_db_session

@@ -8,7 +8,7 @@ from typing import List, Optional
 
 from dotenv import load_dotenv
 from google.cloud import storage
-from models_pydantic import EmailSchema
+from dags.models_pydantic import EmailSchema
 from pydantic import ValidationError
 
 # Configure logging

@@ -14,8 +14,8 @@ from auth.gmail_auth import GmailAuthenticator
 from google.cloud import storage
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.errors import HttpError
-from models_postgres import *
-from models_pydantic import EmailSchema
+from dags.models_postgres import *
+from dags.models_pydantic import EmailSchema
 from pydantic import ValidationError
 from services.storage_service import StorageService
 from sqlalchemy import Integer, func
@@ -369,36 +369,64 @@ def monitoring_function(**context):
 
     try:
         # --- MESSAGE METRICS ---
-        message_count = session.query(func.count(Message.message_id)).filter(Message.created_at >= start_time).scalar()
+        message_count = (
+            session.query(func.count(Message.message_id))
+            .filter(Message.created_at >= start_time)
+            .scalar()
+        )
 
         # if message_count >= 20:
         if message_count > 0:
-            toxicity_rate = session.query(func.avg(Message.is_toxic.cast(Integer))).filter(Message.created_at >= start_time).scalar()
-            customer_satisfaction = session.query(func.avg(Message.feedback.cast(Integer))).filter(Message.created_at >= start_time).scalar()
-            avg_response_time_ms = session.query(func.avg(Message.response_time_ms)).filter(Message.created_at >= start_time).scalar()
+            toxicity_rate = (
+                session.query(func.avg(Message.is_toxic.cast(Integer)))
+                .filter(Message.created_at >= start_time)
+                .scalar()
+            )
+            customer_satisfaction = (
+                session.query(func.avg(Message.feedback.cast(Integer)))
+                .filter(Message.created_at >= start_time)
+                .scalar()
+            )
+            avg_response_time_ms = (
+                session.query(func.avg(Message.response_time_ms))
+                .filter(Message.created_at >= start_time)
+                .scalar()
+            )
         else:
             toxicity_rate = customer_satisfaction = avg_response_time_ms = None
 
         total_messages = message_count
 
         # --- EMAIL PROCESSING SUMMARY ---
-        processing = session.query(
-            func.sum(EmailProcessingSummary.total_emails_processed),
-            func.sum(EmailProcessingSummary.failed_emails),
-        ).filter(EmailProcessingSummary.run_timestamp >= start_time).one()
+        processing = (
+            session.query(
+                func.sum(EmailProcessingSummary.total_emails_processed),
+                func.sum(EmailProcessingSummary.failed_emails),
+            )
+            .filter(EmailProcessingSummary.run_timestamp >= start_time)
+            .one()
+        )
 
         # --- EMAIL EMBEDDING SUMMARY ---
-        embedding = session.query(
-            func.sum(EmailEmbeddingSummary.total_emails_embedded),
-            func.sum(EmailEmbeddingSummary.failed_emails),
-        ).filter(EmailEmbeddingSummary.run_timestamp >= start_time).one()
+        embedding = (
+            session.query(
+                func.sum(EmailEmbeddingSummary.total_emails_embedded),
+                func.sum(EmailEmbeddingSummary.failed_emails),
+            )
+            .filter(EmailEmbeddingSummary.run_timestamp >= start_time)
+            .one()
+        )
 
         # --- EMAIL PREPROCESSING SUMMARY ---
-        preprocessing = session.query(
-            func.sum(EmailPreprocessingSummary.total_emails_processed),
-            func.sum(EmailPreprocessingSummary.successful_emails),
-            func.sum(EmailPreprocessingSummary.failed_emails),
-        ).filter(EmailPreprocessingSummary.run_timestamp >= start_time).one()
+        preprocessing = (
+            session.query(
+                func.sum(EmailPreprocessingSummary.total_emails_processed),
+                func.sum(EmailPreprocessingSummary.successful_emails),
+                func.sum(EmailPreprocessingSummary.failed_emails),
+            )
+            .filter(EmailPreprocessingSummary.run_timestamp >= start_time)
+            .one()
+        )
 
         # --- METRICS DICT ---
         metrics = {
@@ -406,13 +434,10 @@ def monitoring_function(**context):
             "customer_satisfaction": customer_satisfaction,
             "avg_response_time_ms": avg_response_time_ms,
             "total_messages": total_messages,
-
             "emails_processed": processing[0] or 0,
             "emails_failed": processing[1] or 0,
-
             "emails_embedded": embedding[0] or 0,
             "embedding_failed_emails": embedding[1] or 0,
-
             "emails_preprocessed": preprocessing[0] or 0,
             "preprocessing_successful_emails": preprocessing[1] or 0,
             "preprocessing_failed_emails": preprocessing[2] or 0,
@@ -420,23 +445,36 @@ def monitoring_function(**context):
 
         logger.info(f"[MONITORING] Daily Metrics:\n{metrics}")
 
-
         # --- THRESHOLD CHECKS ---
         alerts = []
         if metrics["toxicity_rate"] is not None and metrics["toxicity_rate"] > 0.10:
             alerts.append(f"toxicity_rate too high: {metrics['toxicity_rate']:.2%}")
-        if metrics["customer_satisfaction"] is not None and metrics["customer_satisfaction"] < 0.7:
-            alerts.append(f"customer_satisfaction too low: {metrics['customer_satisfaction']:.2f}")
-        if metrics["avg_response_time_ms"] is not None and metrics["avg_response_time_ms"] > 3000:
-            alerts.append(f"avg_response_time_ms too high: {metrics['avg_response_time_ms']:.2f}ms")
+        if (
+            metrics["customer_satisfaction"] is not None
+            and metrics["customer_satisfaction"] < 0.7
+        ):
+            alerts.append(
+                f"customer_satisfaction too low: {metrics['customer_satisfaction']:.2f}"
+            )
+        if (
+            metrics["avg_response_time_ms"] is not None
+            and metrics["avg_response_time_ms"] > 3000
+        ):
+            alerts.append(
+                f"avg_response_time_ms too high: {metrics['avg_response_time_ms']:.2f}ms"
+            )
         if metrics["emails_processed"] < 100:
             alerts.append("emails_processed is below threshold (< 100)")
         if metrics["total_messages"] < 100:
             alerts.append("total_messages is below threshold (< 100)")
 
-        embedding_success_rate = metrics["emails_embedded"] / max(metrics["emails_embedded"] + metrics["embedding_failed_emails"], 1)
+        embedding_success_rate = metrics["emails_embedded"] / max(
+            metrics["emails_embedded"] + metrics["embedding_failed_emails"], 1
+        )
         if embedding_success_rate < 0.85:
-            alerts.append(f"embedding success rate too low: {embedding_success_rate:.2%}")
+            alerts.append(
+                f"embedding success rate too low: {embedding_success_rate:.2%}"
+            )
 
         if ti:
             ti.xcom_push(key="monitoring_metrics", value=metrics)
