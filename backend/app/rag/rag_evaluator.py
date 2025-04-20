@@ -15,6 +15,7 @@ from RAGBiasAnalyzer import RAGBiasAnalyzer
 from RAGConfig import RAGConfig
 from RAGEvaluator import RAGEvaluator
 from sklearn.metrics.pairwise import cosine_similarity
+import traceback
 
 load_dotenv()
 
@@ -39,6 +40,7 @@ def get_class_from_input(module_name, class_name):
         return target_class
     except (ImportError, AttributeError) as e:
         print(e)
+        traceback.print_exc()
         return None
 
 
@@ -57,7 +59,8 @@ def main():
         collection_name=os.getenv("CHROMA_COLLECTION"),
         host=os.getenv("CHROMA_HOST"),
         port=os.getenv("CHROMA_PORT"),
-        llm_api_key=os.getenv("OPENAI_API_KEY"),
+        llm_api_key=os.getenv("GROQ_API_KEY"),
+        embedding_api_key=os.getenv("OPENAI_API_KEY"),
     )
 
     # Handle different argument scenarios
