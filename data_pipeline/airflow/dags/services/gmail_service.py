@@ -6,7 +6,7 @@ from email.utils import parseaddr
 from airflow.exceptions import AirflowException
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from dags.models_pydantic import EmailSchema
+from models_pydantic import EmailSchema
 from pydantic import ValidationError
 
 logging.basicConfig(
