@@ -1,5 +1,5 @@
 home_mlflow_path=$(pwd)/mlflow
-mlflow_path=~/mlflow
+mlflow_path=/home/ubuntu/mlflow
 
 if [ -f $mlflow_path/docker-compose.yaml ]
 then
@@ -10,6 +10,7 @@ then
     cp -r $home_mlflow_path/* $mlflow_path
 else
     echo "no"
+    mkdir -p $mlflow_path
     cp -r $home_mlflow_path/* $mlflow_path
 fi
 

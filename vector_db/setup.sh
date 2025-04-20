@@ -1,5 +1,5 @@
 home_vector_path=$(pwd)/vector_db
-vector_path=~/vector-database
+vector_path=/home/ubuntu/vector-database
 
 if [ -f $vector_path/docker-compose.yaml ]
 then
@@ -10,6 +10,7 @@ then
     cp -r $home_vector_path/* $vector_path
 else
     echo "no"
+    mkdir -p $vector_path
     cp -r $home_vector_path/* $vector_path
 fi
 

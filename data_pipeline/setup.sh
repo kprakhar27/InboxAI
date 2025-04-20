@@ -1,7 +1,7 @@
 #!/bin/bash
 home_path=$(pwd)/data_pipeline
-airflow_path=~/airflow
-vector_path=~/vecor-database
+airflow_path=/home/ubuntu/airflow
+vector_path=/home/ubuntu/vector-database
 
 if [ -f $airflow_path/docker-compose.yaml ]
 then
@@ -16,6 +16,7 @@ then
     cp -r $home_path/* $airflow_path
 else
     echo "no"
+    mkdir -p $airflow_path
     cp -r $home_path/* $airflow_path
 fi
 
