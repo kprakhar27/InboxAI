@@ -291,5 +291,20 @@ export const gmailService = {
     }
     
     return response.json();
+  },
+
+  async deleteAllChats(): Promise<void> {
+    const response = await fetch(`${API_URL}/api/deletechats`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem('token')}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete all chats');
+    }
+    // No content expected
   }
 };
