@@ -1,0 +1,65 @@
+name: Deploy Airflow to Server
+
+on:
+  workflow_dispatch:
+  
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Create dynamic credentials.json file
+        id: create-json-1
+        uses: jsdaniell/create-json@v1.2.3
+        with:
+          name: "credentials.json"
+          json: ${{ secrets.GOOGLE_CREDENTIALS }}
+          dir: "data_pipeline/airflow/config/"
+      - name: Create dynamic google_service_account.json file
+        id: create-json-2
+        uses: jsdaniell/create-json@v1.2.3
+        with:
+          name: "google_sa.json"
+          json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          dir: "data_pipeline/airflow/config/"
+      - name: Create .env file
+        run: |
+          touch data_pipeline/airflow/.env
+          echo ${{ secrets.AIRFLOW_ENV }} >> data_pipeline/airflow/.env
+          cat data_pipeline/airflow/.env
+      - name: Chmod airflow Script
+        run: sudo chmod +x ./data_pipeline/setup.sh
+      - name: Run cleanup Script
+        run: sudo ./data_pipeline/setup.sh
+      - name: Check Vector DB heartbeat
+        run: |
+          RESPONSE=$(curl -s http://${{ secrets.HOST }}:8000/api/v2/heartbeat)
+          echo "Vector DB Response: $RESPONSE"
+          if echo "$RESPONSE" | grep -q '"nanosecond heartbeat"'; then
+            echo "✅ Vector DB is healthy"
+          else
+            echo "❌ Vector DB health check failed"
+            exit 1
+          fi
+
+      - name: Check Airflow heartbeat
+        run: |
+          RESPONSE=$(curl -s http://${{ secrets.HOST }}:8080/health)
+          echo "Airflow Response: $RESPONSE"
+          
+          SCHEDULER_HEALTH=$(echo "$RESPONSE" | jq -r '.scheduler.status')
+          TRIGGERER_HEALTH=$(echo "$RESPONSE" | jq -r '.triggerer.status')
+          
+          if [[ "$SCHEDULER_HEALTH" == "healthy" && "$TRIGGERER_HEALTH" == "healthy" ]]; then
+            echo "✅ Airflow scheduler and triggerer are healthy"
+          else
+            echo "❌ Airflow health check failed"
+            exit 1
+          fi
+
+      - name: Echo Success
+        run: echo "🚀 Airflow setup complete and healthy!"
+  
