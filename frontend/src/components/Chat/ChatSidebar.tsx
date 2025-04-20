@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { PlusCircle, MessageSquare, Loader } from "lucide-react";
+import { PlusCircle, MessageSquare, Loader, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/components/ui/use-toast";
@@ -20,6 +20,7 @@ export const ChatSidebar = ({
   const { toast } = useToast();
   const [chats, setChats] = useState<ChatHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchChats = async () => {
     try {
@@ -42,12 +43,44 @@ export const ChatSidebar = ({
     fetchChats();
   }, []);
 
+  const handleDeleteAllChats = async () => {
+    if (isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await gmailService.deleteAllChats();
+      setChats([]); // clear chat list immediately
+      toast({
+        title: "Chats Deleted",
+        description: "All chats have been deleted!",
+      });
+      fetchChats(); // refresh from server
+    } catch (error) {
+      console.error("Failed to delete all chats:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete all chats. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="w-64 border-r flex flex-col h-full bg-muted/20">
-      <div className="p-4 border-b">
+      <div className="p-4 border-b space-y-2">
         <Button onClick={onNewChat} className="w-full" variant="outline">
           <PlusCircle className="h-4 w-4 mr-2" />
           New Chat
+        </Button>
+        <Button
+          onClick={handleDeleteAllChats}
+          className="w-full"
+          variant="destructive"
+          disabled={isDeleting || isLoading || chats.length === 0}
+        >
+          <Trash className="h-4 w-4 mr-2" />
+          {isDeleting ? "Deleting..." : "Delete All Chats"}
         </Button>
       </div>
 
