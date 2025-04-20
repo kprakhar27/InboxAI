@@ -33,6 +33,7 @@ jobs:
           fi
       - name: Populate .env file
         run: |
+          sudo chown -R $(whoami) $HOME/mlflow
           echo "${{ secrets.MLFLOW_ENV }}" > $HOME/mlflow/.env
           cat $HOME/mlflow/.env
       - name: Docker Compose Up for MlFlow
