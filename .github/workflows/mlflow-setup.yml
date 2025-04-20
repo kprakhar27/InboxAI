@@ -1,0 +1,41 @@
+name: Deploy MlFlow to Server
+
+on:
+  workflow_dispatch:
+  
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Populate .env file
+        run: |
+          touch mlflow/.env
+          echo ${{ secrets.MLFLOW_ENV }} >> mlflow/.env
+          cat mlflow/.env
+      - name: Create dynamic google_sa.json file
+        id: create-json-1
+        uses: jsdaniell/create-json@v1.2.3
+        with:
+          name: "google_sa.json"
+          json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          dir: "mlflow/config/"
+      - name: Change the mode of the setup script
+        run: sudo chmod +x ./mlflow/setup.sh
+      - name: Run setup script
+        run: sudo ./mlflow/setup.sh
+      - name: Check MlFlow heartbeat
+        run: |
+          RESPONSE=$(curl -s http://${{ secrets.HOST }}:7070/health)
+          echo "MLflow Health Check Response: $RESPONSE"
+          if echo "$RESPONSE" | grep -q '"status": "OK"'; then
+            echo "✅ MLflow is healthy"
+          else
+            echo "❌ MLflow health check failed"
+            exit 1
+          fi
+      - name: Success
+        run: echo "✅ Vector DB deployed successfully!"
