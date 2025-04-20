@@ -39,9 +39,9 @@ jobs:
       - name: Docker Compose Up for MlFlow
         run: |
           sudo docker-compose -f $HOME/mlflow/docker-compose.yml up --build -d
-          sleep 30
       - name: Check MlFlow heartbeat
         run: |
+          sleep 30
           RESPONSE=$(curl -s http://${{ secrets.HOST }}:7070/health)
           echo "MLflow Health Check Response: $RESPONSE"
           if echo "$RESPONSE" | grep -q '"status": "OK"'; then
