@@ -1,4 +1,4 @@
-name: Deploy to Oracle Server
+name: Deploy to Cloud Run
 
 on:
   push:
@@ -12,7 +12,7 @@ env:
   REPOSITORY: flask-repo
   IMAGE_NAME: flask-app
   SERVICE: flask-api
-  
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -21,55 +21,62 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
       - name: Create dynamic credentials.json file
-        id: create-json-1
         uses: jsdaniell/create-json@v1.2.3
         with:
           name: "credentials.json"
           json: ${{ secrets.GOOGLE_CREDENTIALS }}
           dir: "backend/"
+
       - name: Create dynamic google_service_account.json file
-        id: create-json-2
         uses: jsdaniell/create-json@v1.2.3
         with:
           name: "google_sa.json"
           json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
           dir: "backend/"
+
       - name: Create .env file
         run: |
           touch backend/.env
           echo "${{ secrets.BACKEND_ENV }}" > backend/.env
           cat backend/.env
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
       - name: Install dependencies for tests
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
-          pip install pytest
-          pip install pytest-cov
+          pip install pytest pytest-cov
       - name: Run pre-deployment tests
         run: |
           cd backend
           pytest
+
       - name: Authenticate with GCP
         uses: google-github-actions/auth@v2
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
       - name: Set up gcloud SDK
         uses: google-github-actions/setup-gcloud@v1
         with:
           project_id: ${{ env.PROJECT_ID }}
+
       - name: Authenticate Docker to Artifact Registry
         run: |
           gcloud auth configure-docker $REGION-docker.pkg.dev --quiet
+
       - name: Build and Push Docker Image
         run: |
           IMAGE="$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME"
           docker build -t $IMAGE backend/.
           docker push $IMAGE
+
       - name: Deploy to Cloud Run
         run: |
           IMAGE="$REGION-docker.pkg.dev/$PROJECT_ID/$REPOSITORY/$IMAGE_NAME"
@@ -78,6 +85,7 @@ jobs:
             --platform=managed \
             --region=$REGION \
             --allow-unauthenticated
+
       - name: Post-deployment healthcheck
         run: |
           URL=$(gcloud run services describe $SERVICE \
@@ -86,4 +94,44 @@ jobs:
             --format='value(status.url)')
           echo "Checking $URL/auth..."
           curl --fail --retry 3 --retry-delay 5 "$URL/auth" || exit 1
-    
+
+  notify:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: deploy
+    env:
+      SMTP__SMTP_HOST: smtp.gmail.com
+      SMTP__SMTP_PORT: 465
+      SMTP__SMTP_USER: pc612001@gmail.com
+      SMTP__SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      SMTP__SMTP_MAIL_FROM: pc612001@gmail.com
+      ALERT_EMAIL: choudhari.pra@northeastern.edu
+
+    steps:
+      - name: Notify Success
+        if: success()
+        uses: dawidd6/action-send-mail@v4
+        with:
+          server_address: ${{ env.SMTP__SMTP_HOST }}
+          server_port: ${{ env.SMTP__SMTP_PORT }}
+          username: ${{ env.SMTP__SMTP_USER }}
+          password: ${{ env.SMTP__SMTP_PASSWORD }}
+          subject: "✅ Cloud Run Deployment Successful"
+          to: ${{ env.ALERT_EMAIL }}
+          from: ${{ env.SMTP__SMTP_MAIL_FROM }}
+          secure: true
+          body: "Flask backend has been successfully deployed via Cloud Run."
+
+      - name: Notify Failure
+        if: failure()
+        uses: dawidd6/action-send-mail@v4
+        with:
+          server_address: ${{ env.SMTP__SMTP_HOST }}
+          server_port: ${{ env.SMTP__SMTP_PORT }}
+          username: ${{ env.SMTP__SMTP_USER }}
+          password: ${{ env.SMTP__SMTP_PASSWORD }}
+          subject: "❌ Cloud Run Deployment Failed"
+          to: ${{ env.ALERT_EMAIL }}
+          from: ${{ env.SMTP__SMTP_MAIL_FROM }}
+          secure: true
+          body: "Deployment failed. Please check GitHub Actions logs for more details."
