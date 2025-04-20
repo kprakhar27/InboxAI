@@ -38,6 +38,8 @@ jobs:
               then
                   echo "shutting down vector db"
                   sudo docker-compose -f $HOME/vector-database/docker-compose.yml down
+              else
+                  echo "no vector db to shut down"
               fi
               sudo docker-compose -f $HOME/airflow/docker-compose.yaml down
               sudo rm -rf $HOME/airflow
