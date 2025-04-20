@@ -22,7 +22,7 @@ The system architecture is illustrated below:
 Refer to individual component directories for specific setup instructions and documentation.
 
 ### Component Documentation
-- [Data Pipeline](/data_pipeline/README.md)
+- [Data Pipeline](./data_pipeline/README.md)
 - [Backend](/backend/README.md)
 - [Frontend](/frontend/README.md)
 - [MLflow](/mlflow/README.md)
