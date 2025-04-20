@@ -100,7 +100,7 @@ def preprocess_emails(**context):
 
         user_id = context["dag_run"].conf.get("user_id")
         email = context["dag_run"].conf.get("email")
-        run_id = context["dag_run"].run_id
+        run_id = str(uuid.uuid4())
         add_preprocessing_summary(
             session,
             run_id=run_id,

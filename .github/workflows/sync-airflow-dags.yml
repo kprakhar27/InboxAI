@@ -84,7 +84,7 @@ jobs:
           server_port: ${{ env.SMTP__SMTP_PORT }}
           username: ${{ env.SMTP__SMTP_USER }}
           password: ${{ env.SMTP__SMTP_PASSWORD }}
-          subject: "✅ Oracle Server Deployment Successful"
+          subject: "✅ Airflow Sync Successful"
           to: ${{ env.ALERT_EMAIL }}
           from: ${{ env.SMTP__SMTP_MAIL_FROM }}
           secure: true
@@ -98,7 +98,7 @@ jobs:
           server_port: ${{ env.SMTP__SMTP_PORT }}
           username: ${{ env.SMTP__SMTP_USER }}
           password: ${{ env.SMTP__SMTP_PASSWORD }}
-          subject: "❌ Oracle Server Deployment Failed"
+          subject: "❌ Airflow Deployment Failed"
           to: ${{ env.ALERT_EMAIL }}
           from: ${{ env.SMTP__SMTP_MAIL_FROM }}
           secure: true

@@ -10,8 +10,13 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_groq import ChatGroq
 from langgraph.graph import END, START, StateGraph
 from openai import OpenAI
-from RAGConfig import RAGConfig
 from typing_extensions import TypedDict
+
+try:
+    from app.rag.RAGConfig import RAGConfig
+except ImportError:
+    from backend.app.rag.RAGConfig import RAGConfig
+
 
 
 class GraphState(TypedDict):

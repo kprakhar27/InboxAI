@@ -835,3 +835,39 @@ def get_inference():
             ),
             400,
         )
+
+@api_bp.route("/deletechats", methods=["POST"])
+@jwt_required()
+@log_route
+def delete_chats():
+    """
+    Delete all chats for the authenticated user.
+    """
+    username = get_jwt_identity()
+    logger.info(f"Chat deletion requested by user: {username}")
+    
+    try:
+        # Get user from JWT token
+        user = Users.query.filter_by(username=username).first()
+        if not user:
+            logger.error(f"User not found: {username}")
+            return jsonify({"error": "User not found"}), 404
+
+        # Delete all messages first due to foreign key constraints
+        Message.query.filter_by(user_id=user.id).delete()
+        
+        # Delete all chats for the user
+        deleted_count = Chat.query.filter_by(user_id=user.id).delete()
+        
+        db.session.commit()
+        logger.info(f"Successfully deleted {deleted_count} chats for user: {username}")
+        
+        return jsonify({
+            "message": f"Successfully deleted {deleted_count} chats",
+            "deleted_count": deleted_count
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error deleting chats: {str(e)}", exc_info=True)
+        return jsonify({"error": "Failed to delete chats", "details": str(e)}), 500

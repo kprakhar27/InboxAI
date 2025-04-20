@@ -57,7 +57,7 @@ def get_last_read_timestamp(session, user_id, email):
             return tracker.last_read_at
         else:
             # Default to 6 months ago if no record exists
-            default_timestamp = datetime.now(timezone.utc) - timedelta(days=180)
+            default_timestamp = datetime.now(timezone.utc) - timedelta(days=30)
             logger.info(
                 f"No record found. Returning default timestamp: {default_timestamp}"
             )

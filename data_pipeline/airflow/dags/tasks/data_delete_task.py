@@ -80,9 +80,11 @@ def delete_embeddings(**context):
         chroma_client = get_chroma_client()
         collection_name = sanitize_collection_name(user_id)
 
-        # Check if collection exists
-        collections = chroma_client.list_collections()
-        if collection_name not in [col.name for col in collections]:
+        # Get list of collection names directly
+        collection_names = chroma_client.list_collections()
+        
+        # Check if collection exists by name
+        if collection_name not in collection_names:
             logger.warning(f"Collection {collection_name} not found for user {user_id}")
             return
 

@@ -12,7 +12,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 try:
     from app.rag.RAGConfig import RAGConfig  # Using absolute import
 except ImportError:
-    from RAGConfig import RAGConfig
+    from backend.app.rag.RAGConfig import RAGConfig
 
 
 class RAGPipeline:

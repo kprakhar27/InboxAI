@@ -1,53 +1,117 @@
 name: Test RAG Models
 
 on:
+  push:
+    branches: ["main"]
+    paths: ["backend/app/rag/**"]
   workflow_dispatch:
     inputs:
       RAGPipeline:
-        description: 'RAG to Evaluate'
+        description: 'RAGPipeline class name(s), comma-separated'
         required: true
-        default: 'RAGPipeline'
-        type: string
-      ExperimentName:
-        description: 'Experiment Name'
-        required: true
-        default: 'rag_evaluation'
+        default: ''
         type: string
 
 jobs:
-  deploy:
+  find-changed:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    outputs:
+      matrix_json: ${{ steps.set-pipelines.outputs.matrix_json }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Create VENV
-        run: python3 -m venv rag/venv
-      - name: Activate VENV
-        run: source rag/venv/bin/activate
-      - name: Install Packages
-        run: $(pwd)/rag/venv/bin/pip3 install -r rag/requirements.txt
+
+      - name: Get changed RAG pipeline files (ending in Pipeline.py)
+        id: set-pipelines
+        run: |
+          CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^backend/app/rag/.*Pipeline\.py$' || true)
+          PIPELINES=$(echo "$CHANGED" | sed 's|.*/||' | sed 's|\.py$||')
+          JSON=$(printf '%s\n' "$PIPELINES" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "matrix_json=$JSON" >> $GITHUB_OUTPUT
+
+  run-from-changes:
+    if: github.event_name == 'push'
+    needs: find-changed
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pipeline: ${{ fromJson(needs.find-changed.outputs.matrix_json) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Setup Python & Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
       - name: Create .env file
         run: |
-          touch rag/.env          
-          echo MLFLOW_TRACKING_URI=http://${{ secrets.MLFLOW_USERNAME }}:${{ secrets.MLFLOW_PASSWORD }}@${{ secrets.HOST }}:7070 >> rag/.env
-          echo MLFLOW_USERNAME=${{ secrets.MLFLOW_USERNAME }} >> rag/.env
-          echo MLFLOW_PASSWORD=${{ secrets.MLFLOW_PASSWORD }} >> rag/.env
-          echo OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} >> rag/.env
-          echo TEST_DATASET_PATH=rag/qa_data.json >> rag/.env
-          echo EMBEDDING_MODEL=text-embedding-3-small >> rag/.env
-          echo LLM_MODEL=gpt-3.5-turbo >> rag/.env
-          echo TOP_K=5 >> rag/.env
-          echo TEMPERATURE=0.2 >> rag/.env
-          echo CHROMA_COLLECTION=test >> rag/.env
-          echo CHROMA_HOST=${{ secrets.HOST }} >> rag/.env
-          echo CHROMA_PORT=8000 >> rag/.env
-          cat rag/.env
-      - name: get data file
+          touch backend/.env
+          echo "${{ secrets.BACKEND_ENV }}" > backend/.env
+          cat backend/.env
+
+      - name: Download QA Dataset
         run: |
-          wget https://raw.githubusercontent.com/kprakhar27/InboxAI/refs/heads/main/rag/qa_data.json -O rag/qa_data.json
-      - name: Run Experiment
-        run: $(pwd)/rag/venv/bin/python3 rag/rag_evaluator.py ${{ github.event.inputs.RAGPipeline }} ${{ github.event.inputs.ExperimentName }}_${{ github.event.inputs.RAGPipeline }}
-      - name: Success
-        run: echo "Deploy Success"
+          wget https://storage.cloud.google.com/gcs-email-landing-inbox-ai/artifacts/qa_data.json -O rag_model/qa_data.json
+
+      - name: Run RAG Evaluation
+        run: |
+          echo "Running for ${{ matrix.pipeline }}"
+          python rag_model/rag_evaluator.py ${{ matrix.pipeline }} rag_eval_${{ matrix.pipeline }}
+
+  run-from-input:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.RAGPipeline != ''
+    runs-on: ubuntu-latest
+    outputs:
+      matrix_json: ${{ steps.to-matrix.outputs.matrix_json }}
+    steps:
+      - name: Convert input to matrix JSON
+        id: to-matrix
+        run: |
+          INPUT="${{ github.event.inputs.RAGPipeline }}"
+          JSON=$(echo "$INPUT" | tr ',' '\n' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "matrix_json=$JSON" >> $GITHUB_OUTPUT
+
+  run-from-input-matrix:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.RAGPipeline != ''
+    needs: run-from-input
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pipeline: ${{ fromJson(needs.run-from-input.outputs.matrix_json) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Setup Python & Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+      - name: Create .env file
+        run: |
+          touch backend/.env
+          echo "${{ secrets.BACKEND_ENV }}" > backend/.env
+          cat backend/.env
+
+      - name: Download QA Dataset
+        run: |
+          wget https://storage.cloud.google.com/gcs-email-landing-inbox-ai/artifacts/qa_data.json -O rag_model/qa_data.json
+
+      - name: Run RAG Evaluation
+        run: |
+          echo "Running for ${{ matrix.pipeline }}"
+          python rag_model/rag_evaluator.py ${{ matrix.pipeline }} rag_eval_${{ matrix.pipeline }}

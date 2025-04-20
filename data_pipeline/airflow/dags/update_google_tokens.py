@@ -71,12 +71,21 @@ def test_gcp_logging(**context):
 
 
 def get_oauth_credentials():
-    """Load OAuth credentials from JSON file."""
+    """
+    Load OAuth credentials from JSON file.
+    """
     try:
-        cred_path = os.environ.get("CREDENTIAL_PATH_FOR_GMAIL_API", "credentials.json")
+        cred_path = os.environ.get("CREDENTIAL_PATH_FOR_GMAIL_API")
         with open(cred_path) as f:
             creds = json.load(f)
-        return creds["installed"]["client_id"], creds["installed"]["client_secret"]
+            
+        if "web" in creds:
+            return creds["web"]["client_id"], creds["web"]["client_secret"]
+        elif "installed" in creds:
+            return creds["installed"]["client_id"], creds["installed"]["client_secret"]
+        else:
+            raise ValueError("Invalid credentials format")
+            
     except Exception as e:
         logger.error(f"Error loading OAuth credentials: {str(e)}")
         raise
