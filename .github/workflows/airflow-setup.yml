@@ -34,7 +34,7 @@ jobs:
           if [ -f $HOME/airflow/docker-compose.yaml ]
           then
               echo "yes"
-              if [-f $HOME/vector-database/docker-compose.yml]
+              if [ -f $HOME/vector-database/docker-compose.yml ]
               then
                   echo "shutting down vector db"
                   sudo docker-compose -f $HOME/vector-database/docker-compose.yml down
