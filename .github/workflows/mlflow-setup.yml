@@ -60,36 +60,36 @@ jobs:
             echo "❌ MLflow health check failed"
             exit 1
           fi
-    notify:
-      runs-on: ubuntu-latest
-      if: always()
-      needs: deploy
+  notify:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: deploy
 
-      steps:
-        - name: Notify Success
-          if: success()
-          uses: dawidd6/action-send-mail@v4
-          with:
-            server_address: $SMTP__SMTP_HOST
-            server_port: $SMTP__SMTP_PORT
-            username: $SMTP__SMTP_USER
-            password: $SMTP__SMTP_PASSWORD
-            subject: "MLflow Deployment Successful"
-            to: $AIRFLOW_ALERT_EMAIL
-            from: $SMTP__SMTP_MAIL_FROM
-            secure: true
-            body: "MLflow has been successfully deployed to the server."
-        
-        - name: Notify Failure
-          if: failure()
-          uses: dawidd6/action-send-mail@v4
-          with:
-            server_address: $SMTP__SMTP_HOST
-            server_port: $SMTP__SMTP_PORT
-            username: $SMTP__SMTP_USER
-            password: $SMTP__SMTP_PASSWORD
-            subject: "MLflow Deployment Failed"
-            to: $AIRFLOW_ALERT_EMAIL
-            from: $SMTP__SMTP_MAIL_FROM
-            secure: true
-            body: "MLflow deployment has failed. Please check the logs."
+    steps:
+      - name: Notify Success
+        if: success()
+        uses: dawidd6/action-send-mail@v4
+        with:
+          server_address: $SMTP__SMTP_HOST
+          server_port: $SMTP__SMTP_PORT
+          username: $SMTP__SMTP_USER
+          password: $SMTP__SMTP_PASSWORD
+          subject: "MLflow Deployment Successful"
+          to: $AIRFLOW_ALERT_EMAIL
+          from: $SMTP__SMTP_MAIL_FROM
+          secure: true
+          body: "MLflow has been successfully deployed to the server."
+      
+      - name: Notify Failure
+        if: failure()
+        uses: dawidd6/action-send-mail@v4
+        with:
+          server_address: $SMTP__SMTP_HOST
+          server_port: $SMTP__SMTP_PORT
+          username: $SMTP__SMTP_USER
+          password: $SMTP__SMTP_PASSWORD
+          subject: "MLflow Deployment Failed"
+          to: $AIRFLOW_ALERT_EMAIL
+          from: $SMTP__SMTP_MAIL_FROM
+          secure: true
+          body: "MLflow deployment has failed. Please check the logs."
