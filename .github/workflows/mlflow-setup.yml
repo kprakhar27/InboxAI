@@ -22,14 +22,14 @@ jobs:
           if [ -f /home/ubuntu/mlflow/docker-compose.yaml ]
           then
               echo "yes"
-              docker-compose -f /home/ubuntu/mlflow/docker-compose.yaml down
-              rm -rf /home/ubuntu/mlflow
-              mkdir /home/ubuntu/mlflow
-              cp -r mlflow/* /home/ubuntu/mlflow
+              sudo docker-compose -f /home/ubuntu/mlflow/docker-compose.yaml down
+              sudo rm -rf /home/ubuntu/mlflow
+              sudo mkdir /home/ubuntu/mlflow
+              sudo cp -r mlflow/* /home/ubuntu/mlflow
           else
               echo "no"
-              mkdir -p /home/ubuntu/mlflow
-              cp -r mlflow/* /home/ubuntu/mlflow
+              sudo mkdir -p /home/ubuntu/mlflow
+              sudo cp -r mlflow/* /home/ubuntu/mlflow
           fi
       - name: Populate .env file
         run: |
