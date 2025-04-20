@@ -18,7 +18,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Create VENV
-        run: python3 -m virtualenv backend/flaskenv
+        run: python3.11 -m virtualenv backend/flaskenv
       - name: Activate VENV
         run: source backend/flaskenv/bin/activate
       - name: Install Packages
