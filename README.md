@@ -1,21 +1,31 @@
 # InboxAI
 
-Welcome to InboxAI! We are creating a multimodal Retrieval-Augmented Generation (RAG) pipeline.
-
-## Project Status
-
-- **Data Pipeline**: Completed
-- **RAG Pipeline**: Completed 
-- **Backend**: Work in Progress (WIP)
-- **Frontend**: Work in Progress (WIP)
+## Overview
+InboxAI is a Retrieval-Augmented Generation (RAG) pipeline designed to revolutionize email data processing and analysis. Our system seamlessly integrates email fetching, processing, and storage capabilities, providing an intuitive web interface for advanced search and analytics.
 
 ## Project Structure
 
-The project is organized into the following directories:
+The project follows a modular architecture with these key components:
 
-- `/data_pipeline`: Contains scripts and configurations for the data pipeline.
-- `/backend`: Contains the backend server code and related resources.
-- `/frontend`: Contains the frontend application code and assets.
-- `/rag`: Contains the RAG pipelines.
+- `/data_pipeline`: Data ingestion and processing scripts
+- `/backend`: Server implementation and RAG resources
+- `/frontend`: User interface components and assets
+- `/mlflow`: MLFlow tracking server (Docker-based)
+- `/vector_db`: Chroma DB vector database setup
 
-For more information, visit [inboxai.tech](https://inboxai.tech).
+## Architecture
+The system architecture is illustrated below:
+
+![System Architecture](./data_pipeline/airflow/artifacts/project_arch.png)
+
+## Getting Started
+Refer to individual component directories for specific setup instructions and documentation.
+
+### Component Documentation
+- [Data Pipeline](/data_pipeline/README.md)
+- [Backend](/backend/README.md)
+- [Frontend](/frontend/README.md)
+- [MLflow](/mlflow/README.md)
+- [Vector DB](/vector_db/README.md)
+
+### Installation Guide
