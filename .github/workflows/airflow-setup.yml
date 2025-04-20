@@ -14,6 +14,7 @@ jobs:
       - name: Make config directory
         run: |
           sudo mkdir -p data_pipeline/airflow/config
+          sudo chown -R $(whoami) data_pipeline/airflow/config
       - name: Create dynamic credentials.json file
         id: create-json-1
         uses: jsdaniell/create-json@v1.2.3
