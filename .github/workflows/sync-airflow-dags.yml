@@ -47,6 +47,7 @@ jobs:
           sudo docker restart airflow_airflow-scheduler_1
       - name: Check Airflow heartbeat
         run: |
+          sleep 30
           RESPONSE=$(curl -s http://${{ secrets.HOST }}:8080/health)
           echo "Airflow Response: $RESPONSE"
           
