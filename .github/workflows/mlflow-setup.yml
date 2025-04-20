@@ -44,7 +44,7 @@ jobs:
           sleep 30
           RESPONSE=$(curl -s http://${{ secrets.HOST }}:7070/health)
           echo "MLflow Health Check Response: $RESPONSE"
-          if echo "$RESPONSE" | grep -q '"status": "OK"'; then
+          if echo $RESPONSE == 'OK'; then
             echo "✅ MLflow is healthy"
           else
             echo "❌ MLflow health check failed"
