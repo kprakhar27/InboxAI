@@ -109,7 +109,8 @@ jobs:
 
       - name: Download QA Dataset
         run: |
-          wget https://storage.cloud.google.com/gcs-email-landing-inbox-ai/artifacts/qa_data.json -O rag_model/qa_data.json
+          cd rag_model
+          wget https://storage.cloud.google.com/gcs-email-landing-inbox-ai/artifacts/qa_data.json -O qa_data.json
 
       - name: Run RAG Evaluation
         run: |
