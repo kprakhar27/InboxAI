@@ -17,8 +17,14 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install virtualenv
+        run: python -m pip install virtualenv
       - name: Create VENV
-        run: python3 -m virtualenv backend/flaskenv
+        run: python -m virtualenv backend/flaskenv
       - name: Activate VENV
         run: source backend/flaskenv/bin/activate
       - name: Install Packages
@@ -40,19 +46,7 @@ jobs:
       - name: Create .env file
         run: |
           touch backend/.env
-          echo DB_USER=${{ secrets.DB_USER }} >> backend/.env
-          echo DB_PASSWORD=${{ secrets.DB_PASSWORD }} >> backend/.env
-          echo DB_HOST=${{ secrets.HOST }} >> backend/.env
-          echo DB_PORT=${{ secrets.DB_PORT }} >> backend/.env
-          echo DB_NAME=${{ secrets.DB_NAME }} >> backend/.env
-          echo SECRET_KEY=${{ secrets.SECRET_KEY }} >> backend/.env
-          echo JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }} >> backend/.env
-          echo REDIRECT_URI=${{ secrets.REDIRECT_URI }} >> backend/.env
-          echo BUCKET_NAME=${{ secrets.BUCKET_NAME }} >> backend/.env
-          echo EMAIL_FOLDER=emails >> backend/.env
-          echo THREAD_FOLDER=threads >> backend/.env
-          echo CREDENTIAL_PATH_FOR_GMAIL_API=credentials.json >> backend/.env
-          echo GOOGLE_APPLICATION_CREDENTIALS=google_sa.json >> backend/.env
+          echo "${{ secrets.MLFLOW_ENV }}" > backend/.env
           cat backend/.env
       - name: Chmod wsgi Script
         run: sudo chmod +x backend/add-ini-wsgi-conf.sh
