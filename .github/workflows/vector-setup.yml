@@ -30,17 +30,17 @@ jobs:
           if [ -f $HOME/vector-database/docker-compose.yml ]
           then
               echo "yes"
-              docker-compose -f $HOME/vector-database/docker-compose.yml down
-              rm -rf $HOME/vector-database/docker-compose.yml
-              cp -r vector_db/docker-compose.yml $HOME/vector-database/docker-compose.yml
+              sudo docker-compose -f $HOME/vector-database/docker-compose.yml down
+              sudo rm -rf $HOME/vector-database/docker-compose.yml
+              sudo cp -r vector_db/docker-compose.yml $HOME/vector-database/docker-compose.yml
           else
               echo "no"
-              mkdir -p $HOME/vector-database
-              cp -r vector_db/docker-compose.yml $HOME/vector-database/docker-compose.yml
+              sudo mkdir -p $HOME/vector-database
+              sudo cp -r vector_db/docker-compose.yml $HOME/vector-database/docker-compose.yml
           fi
       - name: Docker Compose Up for Vector DB
         run: |
-          docker-compose -f $HOME/vector-database/docker-compose.yml up --build -d
+          sudo docker-compose -f $HOME/vector-database/docker-compose.yml up --build -d
       - name: Check Vector DB heartbeat
         run: |
           sleep 30
