@@ -66,13 +66,13 @@ jobs:
         run: |
           if [ -f $HOME/vector-database/docker-compose.yml ]
             then
-            RESPONSE=$(curl -s http://${{ secrets.HOST }}:8000/api/v2/heartbeat)
-            echo "Vector DB Response: $RESPONSE"
-            if echo "$RESPONSE" | grep -q '"nanosecond heartbeat"'; then
-              echo "✅ Vector DB is healthy"
-            else
-              echo "❌ Vector DB health check failed"
+            sleep 30
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.HOST }}:8000/api/v2/heartbeat)
+            if [ "$RESPONSE" -ne 200 ]; then
+              echo "❌ ChromaDB heartbeat check failed. HTTP $RESPONSE"
               exit 1
+            else
+              echo "✅ ChromaDB heartbeat OK. HTTP $RESPONSE"
             fi
           fi
 
