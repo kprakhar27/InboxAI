@@ -1,21 +1,14 @@
 name: Deploy MlFlow to Server
 
 on:
+  push:
+    branches: ["main"]
+    paths: ["mlflow/**"]
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: self-hosted
-    env:
-      SMTP__SMTP_HOST: smtp.gmail.com
-      SMTP__SMTP_PORT: 465
-      SMTP__SMTP_USER: pc612001@gmail.com
-      SMTP__SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-      SMTP__SMTP_MAIL_FROM: pc612001@gmail.com
-      SMTP__SMTP_STARTTLS: False
-      SMTP__SMTP_SSL: True
-      AIRFLOW_ALERT_EMAIL: choudhari.pra@northeastern.edu
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3

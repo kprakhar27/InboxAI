@@ -62,3 +62,44 @@ jobs:
           fi
       - name: Success
         run: echo "✅ DAGs synced successfully!"
+  
+  notify:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: deploy
+    env:
+      SMTP__SMTP_HOST: smtp.gmail.com
+      SMTP__SMTP_PORT: 465
+      SMTP__SMTP_USER: pc612001@gmail.com
+      SMTP__SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      SMTP__SMTP_MAIL_FROM: pc612001@gmail.com
+      ALERT_EMAIL: choudhari.pra@northeastern.edu
+
+    steps:
+      - name: Notify Success
+        if: success()
+        uses: dawidd6/action-send-mail@v4
+        with:
+          server_address: ${{ env.SMTP__SMTP_HOST }}
+          server_port: ${{ env.SMTP__SMTP_PORT }}
+          username: ${{ env.SMTP__SMTP_USER }}
+          password: ${{ env.SMTP__SMTP_PASSWORD }}
+          subject: "✅ Oracle Server Deployment Successful"
+          to: ${{ env.ALERT_EMAIL }}
+          from: ${{ env.SMTP__SMTP_MAIL_FROM }}
+          secure: true
+          body: "Sync of Airflow DAGs has been successfully completed."
+
+      - name: Notify Failure
+        if: failure()
+        uses: dawidd6/action-send-mail@v4
+        with:
+          server_address: ${{ env.SMTP__SMTP_HOST }}
+          server_port: ${{ env.SMTP__SMTP_PORT }}
+          username: ${{ env.SMTP__SMTP_USER }}
+          password: ${{ env.SMTP__SMTP_PASSWORD }}
+          subject: "❌ Oracle Server Deployment Failed"
+          to: ${{ env.ALERT_EMAIL }}
+          from: ${{ env.SMTP__SMTP_MAIL_FROM }}
+          secure: true
+          body: "Sync of Airflow DAGs failed. Please check GitHub Actions logs for more details."
