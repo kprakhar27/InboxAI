@@ -11,7 +11,7 @@ from google.auth.transport.requests import Request
 from google.cloud.logging.handlers import CloudLoggingHandler
 from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
-from dags.models_postgres import GoogleToken
+from models_postgres import GoogleToken
 from tasks.email_fetch_tasks import send_failure_email
 from utils.airflow_utils import failure_callback
 from utils.db_utils import get_db_session
@@ -78,14 +78,14 @@ def get_oauth_credentials():
         cred_path = os.environ.get("CREDENTIAL_PATH_FOR_GMAIL_API")
         with open(cred_path) as f:
             creds = json.load(f)
-            
+
         if "web" in creds:
             return creds["web"]["client_id"], creds["web"]["client_secret"]
         elif "installed" in creds:
             return creds["installed"]["client_id"], creds["installed"]["client_secret"]
         else:
             raise ValueError("Invalid credentials format")
-            
+
     except Exception as e:
         logger.error(f"Error loading OAuth credentials: {str(e)}")
         raise

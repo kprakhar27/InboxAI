@@ -14,8 +14,8 @@ from auth.gmail_auth import GmailAuthenticator
 from google.cloud import storage
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.errors import HttpError
-from dags.models_postgres import *
-from dags.models_pydantic import EmailSchema
+from models_postgres import *
+from models_pydantic import EmailSchema
 from pydantic import ValidationError
 from services.storage_service import StorageService
 from sqlalchemy import Integer, func

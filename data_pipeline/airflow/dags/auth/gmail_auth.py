@@ -4,7 +4,7 @@ from datetime import datetime
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from dags.models_postgres import GoogleToken
+from models_postgres import GoogleToken
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
