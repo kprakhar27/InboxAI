@@ -147,7 +147,6 @@ def extract_email(email):
     match = re.search(r"[\w\.-]+@[\w\.-]+", email)
     return match.group(0) if match else None
 
-
 def chunk_text(text: str, max_tokens: int = 8192) -> list[str]:
     tokenizer = tiktoken.encoding_for_model("text-embedding-3-small")
     tokens = tokenizer.encode(text)
