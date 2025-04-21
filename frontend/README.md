@@ -45,6 +45,7 @@ The app will be available at http://localhost:3000.
 
 ### Project Structure
 
+```
 frontend/
 ├── public/ # Static assets
 ├── src/
@@ -59,6 +60,7 @@ frontend/
 │ └── index.html # HTML template
 ├── package.json # Project configuration
 └── vite.config.ts # Vite configuration
+```
 
 ### Tech Stack
 
