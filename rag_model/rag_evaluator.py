@@ -95,6 +95,7 @@ def main():
 
     # Get test dataset path from environment
     test_dataset_path = os.getenv("TEST_DATASET_PATH")
+    print(f"Test dataset path: {test_dataset_path}")
 
     # Define RAG configuration
     config = RAGConfig(
