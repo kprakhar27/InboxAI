@@ -36,10 +36,11 @@ else:
 
 flow = get_flow()
 
+
 def get_class_from_input(module_path: str, class_name: str):
     """
     Dynamically load a class from a given file path.
-    
+
     Args:
         module_path: str – full path to the .py file
         class_name: str – class name defined in that module
@@ -108,11 +109,11 @@ def gmail_link():
 def save_google_token():
     user_id = get_jwt_identity()
     logger.info(f"Token save request received from user: {user_id}")
-    
+
     data = request.get_json()
     os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
     auth_url = data.get("auth_url")
-    
+
     try:
         logger.debug(f"Fetching token with auth_url: {auth_url}")
         flow.fetch_token(authorization_response=auth_url)
@@ -132,7 +133,7 @@ def save_google_token():
             return jsonify({"error": "Failed to fetch email"}), 400
 
         logger.info(f"Retrieved email: {email} for user: {user_id}")
-        
+
         user = Users.query.filter_by(username=user_id).first()
         if not user:
             logger.error(f"User not found: {user_id}")
@@ -177,7 +178,7 @@ def save_google_token():
 def get_connected_accounts():
     user_id = get_jwt_identity()
     logger.info(f"Connected accounts requested by user: {user_id}")
-    
+
     user = Users.query.filter_by(username=user_id).first()
     if not user:
         logger.error(f"User not found: {user_id}")
@@ -241,7 +242,7 @@ def get_connected_accounts():
 def refresh_emails():
     user_id = get_jwt_identity()
     logger.info(f"Email refresh requested by user: {user_id}")
-    
+
     user = Users.query.filter_by(username=user_id).first()
     if not user:
         logger.error(f"User not found: {user_id}")
@@ -288,7 +289,9 @@ def refresh_emails():
                 logger.info(f"Successfully triggered refresh for email: {email}")
                 successful_triggers.append(email)
             else:
-                logger.error(f"Failed to trigger refresh for email: {email}, status: {response.status_code}, response: {response.text}")
+                logger.error(
+                    f"Failed to trigger refresh for email: {email}, status: {response.status_code}, response: {response.text}"
+                )
                 failed_triggers.append(
                     {
                         "email": email,
@@ -298,10 +301,14 @@ def refresh_emails():
                 )
 
         except requests.exceptions.RequestException as e:
-            logger.error(f"Request exception when triggering refresh for email: {email}, error: {str(e)}")
+            logger.error(
+                f"Request exception when triggering refresh for email: {email}, error: {str(e)}"
+            )
             failed_triggers.append({"email": email, "error": str(e)})
 
-    logger.info(f"Email refresh complete - successful: {len(successful_triggers)}, failed: {len(failed_triggers)}")
+    logger.info(
+        f"Email refresh complete - successful: {len(successful_triggers)}, failed: {len(failed_triggers)}"
+    )
     return jsonify(
         {
             "message": f"Triggered email refresh for {len(successful_triggers)} accounts",
@@ -317,14 +324,14 @@ def refresh_emails():
 def remove_email():
     username = get_jwt_identity()
     logger.info(f"Email removal requested by user: {username}")
-    
+
     data = request.get_json()
     email = data.get("email")
-    
+
     if not email:
         logger.error("No email provided for removal")
         return jsonify({"error": "Email is required"}), 400
-    
+
     logger.info(f"Attempting to remove email: {email}")
 
     # Get the user from database to get the actual user ID
@@ -369,12 +376,14 @@ def remove_email():
                 200,
             )
         else:
-            logger.error(f"Failed to trigger email removal, status: {response.status_code}, response: {response.text}")
-            
+            logger.error(
+                f"Failed to trigger email removal, status: {response.status_code}, response: {response.text}"
+            )
+
     except Exception as e:
         logger.error(f"Error removing email: {str(e)}", exc_info=True)
         return jsonify({"error": str(e)}), 400
-        
+
     return (
         jsonify({"error": f"Failed to trigger email removal pipeline, {str(e)}"}),
         400,
@@ -391,10 +400,12 @@ def get_rag_sources():
     """
     user_id = get_jwt_identity()
     logger.info(f"RAG sources requested by user: {user_id}")
-    
+
     try:
         # Query all RAG sources
-        rag_sources = RAG.query.filter_by(is_available=True).order_by(RAG.rag_name).all()
+        rag_sources = (
+            RAG.query.filter_by(is_available=True).order_by(RAG.rag_name).all()
+        )
 
         sources = [
             {"rag_id": str(source.rag_id), "name": source.rag_name}
@@ -426,7 +437,7 @@ def create_chat():
     """
     username = get_jwt_identity()
     logger.info(f"Chat creation requested by user: {username}")
-    
+
     try:
         # Get user from JWT token
         user = Users.query.filter_by(username=username).first()
@@ -473,7 +484,7 @@ def get_chats():
     """
     username = get_jwt_identity()
     logger.info(f"Chats requested by user: {username}")
-    
+
     try:
         # Get user from JWT token
         user = Users.query.filter_by(username=username).first()
@@ -513,7 +524,7 @@ def get_messages(chat_id):
     """
     username = get_jwt_identity()
     logger.info(f"Messages requested for chat: {chat_id} by user: {username}")
-    
+
     try:
         # Get user from JWT token
         user = Users.query.filter_by(username=username).first()
@@ -589,7 +600,7 @@ def record_inference_feedback():
     """
     username = get_jwt_identity()
     logger.info(f"Inference feedback received from user: {username}")
-    
+
     try:
         # Get user from JWT token
         user = Users.query.filter_by(username=username).first()
@@ -616,9 +627,11 @@ def record_inference_feedback():
         logger.debug(f"Recording feedback: {feedback} for message: {message_id}")
 
         # Get message and verify ownership
-        message = db.session.query(Message).filter_by(
-            message_id=message_id, user_id=user.id
-        ).first()
+        message = (
+            db.session.query(Message)
+            .filter_by(message_id=message_id, user_id=user.id)
+            .first()
+        )
 
         if not message:
             logger.error(f"Message not found or access denied: {message_id}")
@@ -666,7 +679,7 @@ def get_inference():
     try:
         username = get_jwt_identity()
         logger.info(f"Inference request received from user: {username}")
-        
+
         # Get user from JWT token
         user = Users.query.filter_by(username=username).first()
         if not user:
@@ -691,7 +704,9 @@ def get_inference():
         # Verify chat exists and belongs to user
         chat = Chat.query.filter_by(chat_id=data["chat_id"], user_id=user.id).first()
         if not chat:
-            logger.error(f"Chat not found or access denied for chat_id: {data['chat_id']}")
+            logger.error(
+                f"Chat not found or access denied for chat_id: {data['chat_id']}"
+            )
             return jsonify({"error": "Chat not found or access denied"}), 404
 
         # Verify RAG source exists
@@ -724,7 +739,9 @@ def get_inference():
             if messages
             else ""
         )
-        logger.debug(f"Conversation history prepared, length: {len(conversation_history)}")
+        logger.debug(
+            f"Conversation history prepared, length: {len(conversation_history)}"
+        )
 
         # Get context
         context = messages[0].context if messages else ""
@@ -753,7 +770,7 @@ def get_inference():
 
         logger.info(f"Loading RAG pipeline class: {rag_source.rag_name}")
         Pipeline = get_class_from_input(rag_config_path, rag_source.rag_name)
-        
+
         if Pipeline:
             # Initialize RAG pipeline
             logger.debug("Initializing RAG pipeline")
@@ -761,7 +778,7 @@ def get_inference():
         else:
             logger.error(f"Invalid RAG source: {rag_source.rag_name}")
             return jsonify({"error": "Invalid RAG source"}), 400
-        
+
         logger.info(f"Executing query with RAG pipeline: {data['query'][:50]}...")
         response = rag_pipeline.query(data["query"], context, conversation_history)
         logger.debug("RAG pipeline response received")
@@ -772,7 +789,7 @@ def get_inference():
         moderation_response = openai.moderations.create(
             model="omni-moderation-latest", input=response["response"]
         )
-        
+
         is_toxic = moderation_response.results[0].flagged
         logger.info(f"Toxicity check result: {'toxic' if is_toxic else 'not toxic'}")
 
@@ -827,6 +844,7 @@ def get_inference():
     except Exception as e:
         logger.error(f"Exception in inference: {str(e)}", exc_info=True)
         import traceback
+
         logger.error(traceback.format_exc())
         db.session.rollback()
         return (
@@ -835,6 +853,7 @@ def get_inference():
             ),
             400,
         )
+
 
 @api_bp.route("/deletechats", methods=["POST"])
 @jwt_required()
@@ -845,7 +864,7 @@ def delete_chats():
     """
     username = get_jwt_identity()
     logger.info(f"Chat deletion requested by user: {username}")
-    
+
     try:
         # Get user from JWT token
         user = Users.query.filter_by(username=username).first()
@@ -853,19 +872,35 @@ def delete_chats():
             logger.error(f"User not found: {username}")
             return jsonify({"error": "User not found"}), 404
 
-        # Delete all messages first due to foreign key constraints
-        Message.query.filter_by(user_id=user.id).delete()
-        
-        # Delete all chats for the user
-        deleted_count = Chat.query.filter_by(user_id=user.id).delete()
-        
+        # Delete all messages first using db.session
+        deleted_messages = (
+            db.session.query(Message)
+            .filter(Message.user_id == user.id)
+            .delete(synchronize_session=False)
+        )
+
+        # Delete all chats using db.session
+        deleted_chats = (
+            db.session.query(Chat)
+            .filter(Chat.user_id == user.id)
+            .delete(synchronize_session=False)
+        )
+
         db.session.commit()
-        logger.info(f"Successfully deleted {deleted_count} chats for user: {username}")
-        
-        return jsonify({
-            "message": f"Successfully deleted {deleted_count} chats",
-            "deleted_count": deleted_count
-        }), 200
+        logger.info(
+            f"Successfully deleted {deleted_chats} chats and {deleted_messages} messages for user: {username}"
+        )
+
+        return (
+            jsonify(
+                {
+                    "message": f"Successfully deleted {deleted_chats} chats",
+                    "deleted_count": deleted_chats,
+                    "deleted_messages": deleted_messages,
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         db.session.rollback()
