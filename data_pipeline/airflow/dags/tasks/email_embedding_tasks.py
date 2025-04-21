@@ -187,7 +187,7 @@ def extract_email(email):
     return match.group(0) if match else None
 
 
-def chunk_text(text: str, max_tokens: int = 8000) -> list[str]:
+def chunk_text(text: str, max_tokens: int = 4000) -> list[str]:
     """Split text into chunks that fit within token limit."""
     # Rough estimate: 1 token ≈ 4 characters
     max_chars = max_tokens * 4
