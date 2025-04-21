@@ -20,8 +20,23 @@ The project follows a modular architecture with these key components:
 **[View Project Demo Video](https://northeastern-my.sharepoint.com/:f:/g/personal/choudhari_pra_northeastern_edu/EuYFqd2uHxVEqVexTqDACrABgyo4BA2mTIFPo-V1sLuKNA?e=kuArmi)**
 > Note: Access requires Northeastern University credentials
 
+## 🔗 Quick Links
+
+### Live Application
+👉 [InboxAI Platform](https://inboxai.tech/)
+- Web interface for email analytics and search
+- Secure access with authentication
+- Real-time RAG pipeline integration
+
+### Monitoring & Analytics
+📊 [System Metrics Dashboard](https://inboxai.grafana.net/public-dashboards/543336226b0c4996b3abeb36740e3c9b)
+- Real-time performance monitoring
+- Resource utilization tracking
+- System health indicators
+
+
 ## Architecture
-The system architecture is illustrated below:
+The system architecture is illustrated below: 
 
 ![System Architecture](./data_pipeline/airflow/artifacts/project_arch.png)
 
@@ -250,3 +265,9 @@ This connection string can now be used across:
 - [Frontend](./frontend/README.md)
 - [MLflow](./mlflow/README.md)
 - [Vector DB](./vector_db/README.md)
+
+# Logging and Monitoring
+
+GCP Cloud Logs
+
+![GCP Cloud Logs](./data_pipeline/airflow/artifacts/logs.png)
