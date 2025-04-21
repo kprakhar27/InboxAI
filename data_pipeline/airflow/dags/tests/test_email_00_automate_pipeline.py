@@ -13,6 +13,8 @@ sys.modules["auth.gmail_auth"] = MagicMock()
 sys.modules["services.gmail_service"] = MagicMock()
 sys.modules["utils.preprocessing_utils"] = MagicMock()
 sys.modules["tasks.email_preprocess_tasks"] = MagicMock()
+sys.modules["models_postgres"] = MagicMock()
+sys.modules["models_pydantic"] = MagicMock()
 
 
 class TestDagIntegrity(unittest.TestCase):
