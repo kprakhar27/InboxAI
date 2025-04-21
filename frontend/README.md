@@ -64,9 +64,9 @@ frontend/
 
 ### Tech Stack
 
-Framework: React
-Build Tool: Vite
-Styling: TailwindCSS
-State Management: React Query
-Routing: React Router
-Form Handling: React Hook Form
+- Framework: React
+- Build Tool: Vite
+- Styling: TailwindCSS
+- State Management: React Query
+- Routing: React Router
+- Form Handling: React Hook Form
