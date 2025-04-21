@@ -70,3 +70,10 @@ frontend/
 - State Management: React Query
 - Routing: React Router
 - Form Handling: React Hook Form
+
+### Deployment
+
+The application is deployed using **GitHub Pages**. The `gh-pages` package is used to automate the deployment process.
+ui-deploy workflow builds and copies the `dist` folder to the `gh-pages` branch of the repository.
+
+The deployed application will be available at [https://inboxai.tech](https://inboxai.tech).
