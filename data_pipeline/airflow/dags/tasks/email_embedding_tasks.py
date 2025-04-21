@@ -7,6 +7,7 @@ import chromadb
 import numpy as np
 import openai
 import pandas as pd
+import tiktoken
 from chromadb.config import Settings
 from dotenv import load_dotenv
 from google.cloud import storage
@@ -186,24 +187,27 @@ def extract_email(email):
     match = re.search(r"[\w\.-]+@[\w\.-]+", email)
     return match.group(0) if match else None
 
+def chunk_text(text: str, max_tokens: int = 8192) -> list[str]:
+    """
+    Token-safe text truncation for OpenAI embeddings.
 
-def chunk_text(text: str, max_tokens: int = 4000) -> list[str]:
-    """Split text into chunks that fit within token limit."""
-    # Rough estimate: 1 token ≈ 4 characters
-    max_chars = max_tokens * 4
-    chunks = []
+    Args:
+        text (str): The input text to be embedded.
+        max_tokens (int): Maximum token limit per embedding call.
+    Returns:
+        list[str]: A single-item list containing a safely truncated chunk.
+    """
+    tokenizer = tiktoken.encoding_for_model("text-embedding-3-small")
+    tokens = tokenizer.encode(text)
 
-    while len(text) > max_chars:
-        # Find last period before max_chars
-        split_point = text[:max_chars].rfind(".")
-        if split_point == -1:
-            split_point = max_chars
+    if len(tokens) > max_tokens:
+        logger.warning(
+            f"Text too long ({len(tokens)} tokens); truncating to {max_tokens} tokens."
+        )
+        tokens = tokens[:max_tokens]
 
-        chunks.append(text[: split_point + 1])
-        text = text[split_point + 1 :]
-
-    chunks.append(text)
-    return chunks
+    chunk = tokenizer.decode(tokens)
+    return [chunk]
 
 
 def generate_embeddings(**context):
