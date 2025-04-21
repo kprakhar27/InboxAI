@@ -99,7 +99,6 @@ The test dataset should be a JSON file with the following structure:
     "topic": "geography",
     "industry": "education"
   },
-  ...
 ]
 ```
 
@@ -129,31 +128,6 @@ The test dataset should be a JSON file with the following structure:
 - **Topic Bias**: Measures bias across different topics
 - **Response Diversity**: Measures the diversity of generated responses
 - **Sentiment Distribution**: Analyzes the sentiment distribution of responses
-
-## Performance Thresholds
-
-The following thresholds are used to determine if a RAG model meets performance requirements:
-
-```python
-thresholds = {
-    'embedding_evaluation': {
-        'retrieval_precision': 0.2,
-        'retrieval_recall': 0.2,
-        'retrieval_f1': 0.2
-    },
-    'top_k_evaluation': {
-        'top_k_1': 0.2,
-        'top_k_3': 0.2,
-        'top_k_5': 0.2
-    },
-    'rag_system_evaluation': {
-        'bleu_score': 0.2,
-        'llm_judge_accuracy': 0.2,
-        'llm_judge_relevance': 0.2,
-        'llm_judge_completeness': 0.2
-    }
-}
-```
 
 ## Dependencies
 
