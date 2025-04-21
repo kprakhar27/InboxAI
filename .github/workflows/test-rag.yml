@@ -3,7 +3,7 @@ name: Test RAG Models
 on:
   push:
     branches: ["main"]
-    paths: ["backend/app/rag/**"]
+    paths: ["backend/app/rag/**", "rag_model/**"]
   workflow_dispatch:
     inputs:
       RAGPipeline:
