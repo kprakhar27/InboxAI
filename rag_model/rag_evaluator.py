@@ -61,32 +61,51 @@ def get_class_from_input(module_path: str, class_name: str):
     return getattr(module, class_name)
 
 def check_llm_results(results, thresholds):
-    """Check if LLM evaluation results exceed the given thresholds.
+    """Check if LLM evaluation results exceed given thresholds with debug prints."""
 
-    Args:
-        results (dict): LLM evaluation results.
-        thresholds (dict): Threshold values for evaluation.
+    def check_overall(metrics, threshold_metrics, category_name):
+        """Compare each metric with its threshold and print debug info."""
+        all_pass = True
+        for key, threshold_val in threshold_metrics.items():
+            actual_val = metrics.get(key, 0)
+            if actual_val >= threshold_val:
+                print(f"[PASS ✅] {category_name} → {key}: {actual_val:.3f} >= {threshold_val:.3f}")
+            else:
+                print(f"[FAIL ❌] {category_name} → {key}: {actual_val:.3f} < {threshold_val:.3f}")
+                all_pass = False
+        return all_pass
 
-    Returns:
-        dict: Boolean flags indicating if each category passes and overall result.
-    """
-    def check_metrics(metrics, threshold_metrics):
-        return all(metrics.get(key, 0) >= threshold_metrics.get(key, 0) for key in threshold_metrics)
+    # --- Embedding Evaluation ---
+    embedding_metrics = results.get("embedding_evaluation", {}).get("overall", {})
+    embedding_pass = check_overall(embedding_metrics, thresholds.get("embedding_evaluation", {}), "Embedding Evaluation")
 
-    embedding_pass = check_metrics(results["embedding_evaluation"], thresholds["embedding_evaluation"])
+    # --- Top-K Evaluation ---
+    top_k_results = results.get("top_k_evaluation", {})
+    top_k_pass = False
+    if "error" in top_k_results:
+        print("[SKIP ⚠️] Top-K Evaluation skipped due to error:", top_k_results["error"])
+    else:
+        top_k_pass = True
+        for k, threshold_val in thresholds["top_k_evaluation"].items():
+            actual_val = top_k_results.get(k, {}).get("overall", {}).get("answer_accuracy", 0)
+            if actual_val >= threshold_val:
+                print(f"[PASS ✅] Top-K Evaluation → {k} accuracy: {actual_val:.3f} >= {threshold_val:.3f}")
+            else:
+                print(f"[FAIL ❌] Top-K Evaluation → {k} accuracy: {actual_val:.3f} < {threshold_val:.3f}")
+                top_k_pass = False
 
-    top_k_pass = all(
-        results["top_k_evaluation"][k]["answer_accuracy"] >= thresholds["top_k_evaluation"].get(k, 0)
-        for k in thresholds["top_k_evaluation"]
-    )
+    # --- RAG System Evaluation ---
+    rag_metrics = results.get("rag_system_evaluation", {}).get("overall", {})
+    rag_pass = check_overall(rag_metrics, thresholds.get("rag_system_evaluation", {}), "RAG System Evaluation")
 
-    rag_pass = check_metrics(results["rag_evaluation"], thresholds["rag_evaluation"])
-
+    overall = embedding_pass or top_k_pass or rag_pass
+    print(f"\n🔍 Summary:\n  Embedding Pass: {embedding_pass}\n  Top-K Pass: {top_k_pass}\n  RAG Pass: {rag_pass}\n  ✅ Overall Pass: {overall}")
+    
     return {
         "embedding_pass": embedding_pass,
         "top_k_pass": top_k_pass,
         "rag_pass": rag_pass,
-        "overall_pass": embedding_pass or top_k_pass or rag_pass
+        "overall_pass": overall
     }
 
 
@@ -94,7 +113,7 @@ def main():
     print(sys.argv)
 
     # Get test dataset path from environment
-    test_dataset_path = os.getenv("TEST_DATASET_PATH")
+    test_dataset_path = os.getenv("TEST_DATASET_PATH", )
     print(f"Test dataset path: {test_dataset_path}")
 
     # Define RAG configuration
@@ -109,7 +128,7 @@ def main():
         llm_api_key=os.getenv("GROQ_API_KEY"),
         embedding_api_key=os.getenv("OPENAI_API_KEY"),
     )
-
+    
     rag_config_path = os.path.abspath(
         os.path.join(
             os.path.dirname(__file__), "..", "backend", "app", "rag", sys.argv[1] + ".py"
@@ -148,7 +167,7 @@ def main():
                         'top_k_3': 0.2,
                         'top_k_5': 0.2
                     },
-                    'rag_evaluation': {
+                    'rag_system_evaluation': {
                         'bleu_score': 0.2,
                         'llm_judge_accuracy': 0.2,
                         'llm_judge_relevance': 0.2,
