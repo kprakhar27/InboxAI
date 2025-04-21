@@ -33,6 +33,7 @@ jobs:
 
   deploy:
     runs-on: self-hosted
+    needs: build-and-test
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
