@@ -16,6 +16,8 @@ sys.modules["tasks.email_preprocess_tasks"] = MagicMock()
 sys.modules["utils.gcp_logging_utils"] = MagicMock()
 sys.modules["utils.airflow_utils"] = MagicMock()
 sys.modules["utils.db_utils"] = MagicMock()
+sys.modules["models_postgres"] = MagicMock()
+sys.modules["models_pydantic"] = MagicMock()
 
 
 class TestDAGs(unittest.TestCase):
