@@ -187,7 +187,6 @@ def extract_email(email):
     match = re.search(r"[\w\.-]+@[\w\.-]+", email)
     return match.group(0) if match else None
 
-
 def chunk_text(text: str, max_tokens: int = 8192) -> list[str]:
     """
     Token-safe text truncation for OpenAI embeddings.
@@ -195,7 +194,6 @@ def chunk_text(text: str, max_tokens: int = 8192) -> list[str]:
     Args:
         text (str): The input text to be embedded.
         max_tokens (int): Maximum token limit per embedding call.
-
     Returns:
         list[str]: A single-item list containing a safely truncated chunk.
     """
