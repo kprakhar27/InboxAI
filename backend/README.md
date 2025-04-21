@@ -6,7 +6,7 @@ The backend of InboxAI is built using Flask, a lightweight WSGI web application 
 
 The deployed apis can be used using the endpoint: https://test.inboxai.tech
 
-Certainly! Here's an updated `README.md` that includes detailed steps for installing and authenticating the Google Cloud SDK (`gcloud`), setting up the Artifact Registry repository, and creating the necessary service account with appropriate roles.
+Detailed steps for installing and authenticating the Google Cloud SDK (`gcloud`), setting up the Artifact Registry repository, and creating the necessary service account with appropriate roles.
 
 
 ## 📁 Project Structure
