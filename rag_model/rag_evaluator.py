@@ -70,39 +70,51 @@ def check_llm_results(results, thresholds):
     Returns:
         dict: Boolean flags indicating if each category passes and overall result.
     """
-    def check_metrics(metrics, threshold_metrics):
+    def check_overall(metrics, threshold_metrics):
         return all(metrics.get(key, 0) >= threshold_metrics.get(key, 0) for key in threshold_metrics)
 
-    embedding_pass = check_metrics(results["embedding_evaluation"], thresholds["embedding_evaluation"])
+    # Embedding Evaluation
+    embedding_metrics = results.get("embedding_evaluation", {}).get("overall", {})
+    embedding_pass = check_overall(embedding_metrics, thresholds.get("embedding_evaluation", {}))
 
-    top_k_pass = all(
-        results["top_k_evaluation"][k]["answer_accuracy"] >= thresholds["top_k_evaluation"].get(k, 0)
-        for k in thresholds["top_k_evaluation"]
-    )
+    # Top-K Evaluation (skip if error)
+    top_k_eval = results.get("top_k_evaluation", {})
+    top_k_pass = False
+    if "error" not in top_k_eval:
+        top_k_pass = all(
+            top_k_eval.get(k, {}).get("answer_accuracy", 0) >= thresholds["top_k_evaluation"].get(k, 0)
+            for k in thresholds["top_k_evaluation"]
+        )
 
-    rag_pass = check_metrics(results["rag_evaluation"], thresholds["rag_evaluation"])
+    # RAG System Evaluation
+    rag_metrics = results.get("rag_system_evaluation", {}).get("overall", {})
+    rag_pass = check_overall(rag_metrics, thresholds.get("rag_system_evaluation", {}))
 
     return {
         "embedding_pass": embedding_pass,
         "top_k_pass": top_k_pass,
         "rag_pass": rag_pass,
-        "overall_pass": embedding_pass or top_k_pass or rag_pass
+        "overall_pass": embedding_pass and top_k_pass and rag_pass
     }
 
 
 def main():
-    print(sys.argv)
+    print("Starting RAG Evaluator...")
+    print(f"Arguments provided: {sys.argv}")
 
     # Get test dataset path from environment
     test_dataset_path = os.getenv("TEST_DATASET_PATH")
+    if not test_dataset_path:
+        print("Error: TEST_DATASET_PATH environment variable not set")
+        sys.exit(1)
     print(f"Test dataset path: {test_dataset_path}")
 
     # Define RAG configuration
     config = RAGConfig(
         embedding_model=os.getenv("EMBEDDING_MODEL"),
         llm_model=os.getenv("LLM_MODEL"),
-        top_k=int(os.getenv("TOP_K")),
-        temperature=float(os.getenv("TEMPERATURE")),
+        top_k=int(os.getenv("TOP_K", "5")),
+        temperature=float(os.getenv("TEMPERATURE", "0.7")),
         collection_name=os.getenv("CHROMA_COLLECTION"),
         host=os.getenv("CHROMA_HOST"),
         port=os.getenv("CHROMA_PORT"),
@@ -110,142 +122,128 @@ def main():
         embedding_api_key=os.getenv("OPENAI_API_KEY"),
     )
 
+    # Check for required arguments
+    if len(sys.argv) < 3:
+        print("Usage: python rag_evaluator.py <pipeline_name> <experiment_name>")
+        print("Example: python rag_evaluator.py CRAGPipeline rag_eval_CRAGPipeline")
+        sys.exit(1)
+
+    # Get pipeline name and experiment name from arguments
+    pipeline_name = sys.argv[1]
+    experiment_name = sys.argv[2]
+    
+    print(f"Using pipeline: {pipeline_name}")
+    print(f"Using experiment name: {experiment_name}")
+    
     rag_config_path = os.path.abspath(
         os.path.join(
-            os.path.dirname(__file__), "..", "backend", "app", "rag", sys.argv[1] + ".py"
+            os.path.dirname(__file__), "..", "backend", "app", "rag", pipeline_name + ".py"
         )
     )
 
-    # Handle different argument scenarios
-    if len(sys.argv) == 3:
-        
-        # Original 2-argument scenario (pipeline name and run name)
-        Pipeline = get_class_from_input(rag_config_path, sys.argv[1])
-        print(Pipeline)
+    try:
+        # Load the pipeline class
+        Pipeline = get_class_from_input(rag_config_path, pipeline_name)
+        print(f"Successfully loaded pipeline: {pipeline_name}")
 
-        if Pipeline:
-            # Initialize RAG pipeline
-            rag_pipeline = Pipeline(config)
+        # Initialize RAG pipeline
+        rag_pipeline = Pipeline(config)
 
-            # Initialize evaluator
-            evaluator = RAGEvaluator(test_dataset_path, rag_pipeline)
+        # Initialize evaluator
+        evaluator = RAGEvaluator(test_dataset_path, rag_pipeline)
 
-            # Run evaluation
-            results = evaluator.run_full_evaluation(sys.argv[2])
-            
-            print(results)
-            
-            # Save results to database if performance meets threshold
-            try:
-                thresholds = {
-                    'embedding_evaluation': {
-                        'retrieval_precision': 0.2,
-                        'retrieval_recall': 0.2,
-                        'retrieval_f1': 0.2
-                    },
-                    'top_k_evaluation': {
-                        'top_k_1': 0.2,
-                        'top_k_3': 0.2,
-                        'top_k_5': 0.2
-                    },
-                    'rag_evaluation': {
-                        'bleu_score': 0.2,
-                        'llm_judge_accuracy': 0.2,
-                        'llm_judge_relevance': 0.2,
-                        'llm_judge_completeness': 0.2
-                    }
+        # Always run full evaluation with provided experiment name
+        print(f"Running full evaluation with experiment name: {experiment_name}")
+        results = evaluator.run_full_evaluation(experiment_name)
+
+        print("\nEvaluation Results:")
+        print(json.dumps(results, indent=2))
+
+        # Run bias analysis
+        print("\nRunning bias analysis...")
+        bias_analyzer = RAGBiasAnalyzer(evaluator)
+        bias_report = bias_analyzer.generate_bias_report(experiment_name=experiment_name)
+        print("\nBias Analysis Report:")
+        print(json.dumps(bias_report, indent=2))
+
+        # Save results to database if performance meets threshold
+        try:
+            thresholds = {
+                'embedding_evaluation': {
+                    'retrieval_precision': 0.2,
+                    'retrieval_recall': 0.2,
+                    'retrieval_f1': 0.2
+                },
+                'top_k_evaluation': {
+                    'top_k_1': 0.2,
+                    'top_k_3': 0.2,
+                    'top_k_5': 0.2
+                },
+                'rag_system_evaluation': {
+                    'bleu_score': 0.2,
+                    'llm_judge_accuracy': 0.2,
+                    'llm_judge_relevance': 0.2,
+                    'llm_judge_completeness': 0.2
                 }
-                llms = check_llm_results(results, thresholds)
-                # Create database session
-                DB_USER = os.getenv("DB_USER")
-                DB_PASSWORD = os.getenv("DB_PASSWORD")
-                DB_HOST = os.getenv("DB_HOST")
-                DB_PORT = os.getenv("DB_PORT")
-                DB_NAME = os.getenv("DB_NAME")
+            }
+            llms = check_llm_results(results, thresholds)
+            
+            # Create database session
+            DB_USER = os.getenv("DB_USER")
+            DB_PASSWORD = os.getenv("DB_PASSWORD")
+            DB_HOST = os.getenv("DB_HOST")
+            DB_PORT = os.getenv("DB_PORT")
+            DB_NAME = os.getenv("DB_NAME")
+            
+            if all([DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME]):
                 engine = create_engine(f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
                 Session = sessionmaker(bind=engine)
                 session = Session()
                         
                 # Check if RAG model already exists in database
-                existing_rag = session.query(RAG).filter_by(rag_name=sys.argv[1]).first()              
+                existing_rag = session.query(RAG).filter_by(rag_name=pipeline_name).first()              
                 if llms["overall_pass"]:
                     if existing_rag:
                         # Update existing RAG model
                         existing_rag.is_available = True
                         session.commit()
-                        print(f"Updated existing RAG model '{sys.argv[1]}' in database with True availability")
+                        print(f"Updated existing RAG model '{pipeline_name}' in database with True availability")
                     else:
                         # Add new RAG model to database
                         new_rag = RAG(
                             rag_id=uuid.uuid4(),
-                            rag_name=sys.argv[1],
+                            rag_name=pipeline_name,
                             is_available=True
                         )
                         session.add(new_rag)
-                        print(f"RAG model '{sys.argv[1]}' added to database with True availability")
+                        print(f"RAG model '{pipeline_name}' added to database with True availability")
                 else:
                     if existing_rag:
                         # Update existing RAG model
                         existing_rag.is_available = False
                         session.commit()
-                        print(f"Updated existing RAG model '{sys.argv[1]}' in database with False availability")
+                        print(f"Updated existing RAG model '{pipeline_name}' in database with False availability")
                     else:
                         # Add new RAG model to database
                         new_rag = RAG(
                             rag_id=uuid.uuid4(),
-                            rag_name=sys.argv[1],
+                            rag_name=pipeline_name,
                             is_available=False
                         )
                         session.add(new_rag)
-                    print(f"RAG model '{sys.argv[1]}' added to database with False availability")
-                session.commit()
+                        print(f"RAG model '{pipeline_name}' added to database with False availability")
                 session.close()
-                print("Evaluation Complete!")
-            except Exception as e:
-                print(f"Failed to save to database: {e}")
-                traceback.print_exc()
+            else:
+                print("Warning: Database credentials not fully configured. Skipping database update.")
+                
+        except Exception as e:
+            print(f"Warning: Failed to update database: {str(e)}")
+            traceback.print_exc()
 
-    elif len(sys.argv) == 4:
-        # New 3-argument scenario (pipeline name, eval run name, bias run name)
-        Pipeline = get_class_from_input(rag_config_path, sys.argv[1])
-        print(Pipeline)
-
-        if Pipeline:
-            # Initialize RAG pipeline
-            rag_pipeline = Pipeline(config)
-
-            # Initialize evaluator
-            evaluator = RAGEvaluator(test_dataset_path, rag_pipeline)
-
-            # Run full evaluation
-            eval_results = evaluator.run_full_evaluation(sys.argv[2])
-
-            # Initialize bias analyzer
-            bias_analyzer = RAGBiasAnalyzer(evaluator)
-
-            # Run bias analysis
-            bias_report = bias_analyzer.generate_bias_report(
-                experiment_name=sys.argv[3]
-            )
-
-            # Optional: Save bias report to a file
-            with open("bias_analysis_report.json", "w") as f:
-                json.dump(bias_report, f, indent=4)
-
-            print("Evaluation and Bias Analysis Complete!")
-        else:
-            print(
-                "Please provide the RAG pipeline name, evaluation run name, and bias analysis run name as command line arguments."
-            )
-    else:
-        print("Usage:")
-        print(
-            "- For standard evaluation: python script.py <PipelineName> <EvalRunName>"
-        )
-        print(
-            "- For evaluation with bias analysis: python script.py <PipelineName> <EvalRunName> <BiasRunName>"
-        )
-
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
