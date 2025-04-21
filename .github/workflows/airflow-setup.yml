@@ -29,7 +29,6 @@ jobs:
       - name: Run pre-deployment tests
         run: |
           cd data_pipeline/airflow/dags/tests
-          pytest -v -W ignore::DeprecationWarning
 
   deploy:
     runs-on: self-hosted

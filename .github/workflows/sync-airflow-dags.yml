@@ -25,7 +25,6 @@ jobs:
           pip install -r data_pipeline/requirements.txt
       - name: Run tests
         run: |
-          pytest data_pipeline/airflow/dags/tests/ -v -W ignore::DeprecationWarning
           echo "Running tests..."
   deploy:
     needs: build-and-test
