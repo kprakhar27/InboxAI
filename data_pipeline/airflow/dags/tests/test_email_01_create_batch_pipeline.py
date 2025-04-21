@@ -1,6 +1,7 @@
 import unittest
 from airflow.models import DagBag
 from unittest.mock import MagicMock, patch
+from airflow.utils import db as airflow_db
 
 import sys
 
@@ -26,7 +27,17 @@ class TestEmailCreateBatchPipelineDAG(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Load the DAG for testing."""
-        cls.dagbag = DagBag(dag_folder="./airflow/dags", include_examples=False)
+        airflow_db.resetdb()
+        airflow_db.initdb()
+        with patch.dict(
+            "sys.modules",
+            {
+                "utils.airflow_utils": MagicMock(),
+                "utils.db_utils": MagicMock(),
+                "utils.gcp_logging_utils": MagicMock(),
+            },
+        ):
+            cls.dagbag = DagBag(dag_folder="./airflow/dags", include_examples=False)
 
     def test_dag_loaded(self):
         """Test if the DAG is correctly loaded."""
