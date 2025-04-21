@@ -1,10 +1,12 @@
-# React + TypeScript + Vite Project
+# InboxAI Frontend
 
-## 🚀 Getting Started
+## Description
+
+The frontend of InboxAI provides an intuitive and user-friendly web interface for chat with email. This repository contains the frontend codebase for InboxAI, built using modern web technologies like React, Vite, and TailwindCSS.
 
 This project is built using **React**, **TypeScript**, and **Vite**.
 
-### 📦 Installation
+### Installation
 
 Make sure you have [Node.js](https://nodejs.org/) installed.
 
@@ -29,7 +31,7 @@ To start the development server, run:
 npm run dev
 ```
 
-The app will be available at http://localhost:8080.
+The app will be available at http://localhost:3000.
 
 ### Available Scripts
 
@@ -41,12 +43,28 @@ The app will be available at http://localhost:8080.
 
 `npm run lint` - Run ESLint to check for code issues.
 
+### Project Structure
+
+frontend/
+├── public/ # Static assets
+├── src/
+│ ├── components/ # Reusable React components
+│ ├── pages/ # Application pages
+│ ├── hooks/ # Custom React hooks
+│ ├── services/ # API service functions
+│ ├── utils/ # Utility functions
+│ ├── styles/ # Global styles
+│ ├── App.tsx # Main application component
+│ ├── main.tsx # Entry point
+│ └── index.html # HTML template
+├── package.json # Project configuration
+└── vite.config.ts # Vite configuration
+
 ### Tech Stack
 
-React - UI Library
-
-TypeScript - Type-safe JavaScript
-
-Vite - Fast bundler and dev server
-
-ESLint - Linting
+Framework: React
+Build Tool: Vite
+Styling: TailwindCSS
+State Management: React Query
+Routing: React Router
+Form Handling: React Hook Form
