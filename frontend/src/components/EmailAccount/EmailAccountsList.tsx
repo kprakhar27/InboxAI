@@ -31,8 +31,8 @@ export const EmailAccountsList = ({
       }
 
       toast({
-        title: "Email Refreshed",
-        description: `${email} has been refreshed successfully.`,
+        title: "Email Refresh triggered",
+        description: `${email} has been triggered successfully.`,
       });
     } catch (error) {
       console.error("Failed to refresh email:", error);
