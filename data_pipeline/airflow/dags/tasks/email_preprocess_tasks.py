@@ -10,7 +10,7 @@ from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from google.cloud import storage
 from services.storage_service import StorageService
 from utils.airflow_utils import decode_base64_url_safe
-from utils.db_utils import add_preprocessing_summary, get_db_session
+from utils.db_utils import add_processing_summary, get_db_session
 from utils.gcp_logging_utils import setup_gcp_logging
 from utils.preprocessing_utils import EmailPreprocessor
 
@@ -102,15 +102,13 @@ def preprocess_emails(**context):
         user_id = context["dag_run"].conf.get("user_id")
         email = context["dag_run"].conf.get("email")
         run_id = str(uuid.uuid4())
-        add_preprocessing_summary(
+        add_processing_summary(
             session,
             run_id=run_id,
             user_id=user_id,
             email=email,
             total_emails_processed=total_emails,
             total_threads_processed=total_threads,
-            successful_emails=successful_emails,
-            successful_threads=successful_threads,
             failed_emails=failed_emails,
             failed_threads=failed_threads,
         )

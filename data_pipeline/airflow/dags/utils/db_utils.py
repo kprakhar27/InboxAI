@@ -200,7 +200,14 @@ def add_preprocessing_summary(
 
 
 def add_processing_summary(
-    session, user_id, email, total_emails, total_threads, failed_emails, failed_threads
+    session,
+    run_id,
+    user_id,
+    email,
+    total_emails,
+    total_threads,
+    failed_emails,
+    failed_threads,
 ):
     """
     Add a processing summary record to the EmailProcessingSummary table.
@@ -208,6 +215,7 @@ def add_processing_summary(
     try:
         logger.info(f"Adding processing summary for email: {email}")
         summary = EmailProcessingSummary(
+            run_id=run_id,
             user_id=user_id,
             email=email,
             total_emails_processed=total_emails,
