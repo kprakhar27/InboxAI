@@ -1,6 +1,6 @@
 wheel
 gunicorn
-Werkzeug==2.2.2
+Werkzeug==3.1.5
 Flask==2.2.5
 flask-sqlalchemy
 flask-login
